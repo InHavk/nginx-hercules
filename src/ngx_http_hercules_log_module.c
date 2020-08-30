@@ -49,64 +49,64 @@ static ngx_int_t ngx_http_hercules_handler(ngx_http_request_t *r){
     container_add_tag_Long(event->payload, 4, "time", timestamp);
 
     /* /NginxEvent/host = String */
-    if(ngx_http_hercules_event_host(event->payload, r) == NGX_ERROR){
+    if(ngx_http_hercules_event_host(event->payload, r, mcf) == NGX_ERROR){
         goto error;
     }
 
     /* /NginxEvent/uri = String */
-    if(ngx_http_hercules_event_uri(event->payload, r) == NGX_ERROR){
+    if(ngx_http_hercules_event_uri(event->payload, r, mcf) == NGX_ERROR){
         goto error;
     }
 
     /* /NginxEvent/args */
-    if(ngx_http_hercules_event_args(event->payload, r) == NGX_ERROR){
+    if(ngx_http_hercules_event_args(event->payload, r, mcf) == NGX_ERROR){
         goto error;
     }
     
     /* /NginxEvent/status */
-    if(ngx_http_hercules_event_status(event->payload, r) == NGX_ERROR){
+    if(ngx_http_hercules_event_status(event->payload, r, mcf) == NGX_ERROR){
         goto error;
     }
 
     /* /NginxEvent/method */
-    if(ngx_http_hercules_event_method(event->payload, r) == NGX_ERROR){
+    if(ngx_http_hercules_event_method(event->payload, r, mcf) == NGX_ERROR){
         goto error;
     }
 
     /* /NginxEvent/proto */
-    if(ngx_http_hercules_event_proto(event->payload, r) == NGX_ERROR){
+    if(ngx_http_hercules_event_proto(event->payload, r, mcf) == NGX_ERROR){
         goto error;
     }
 
     /* /NginxEvent/req_headers */
-    if(ngx_http_hercules_event_req_headers(event->payload, r) == NGX_ERROR){
+    if(ngx_http_hercules_event_req_headers(event->payload, r, mcf) == NGX_ERROR){
         goto error;
     }
 
     /* /NginxEvent/res_headers */
-    if(ngx_http_hercules_event_res_headers(event->payload, r) == NGX_ERROR){
+    if(ngx_http_hercules_event_res_headers(event->payload, r, mcf) == NGX_ERROR){
         goto error;
     }
 
     /* /NginxEvent/upstream_status */
     /* /NginxEvent/upstream_addr */
     /* /NginxEvent/counters */
-    if(ngx_http_hercules_event_res_counters(event->payload, r) == NGX_ERROR){
+    if(ngx_http_hercules_event_res_counters(event->payload, r, mcf) == NGX_ERROR){
         goto error;
     }
 
     /* /NginxEvent/connection */
-    if(ngx_http_hercules_event_connection(event->payload, r) == NGX_ERROR){
+    if(ngx_http_hercules_event_connection(event->payload, r, mcf) == NGX_ERROR){
         goto error;
     }
 
     /* /NginxEvent/request_id */
-    if(ngx_http_hercules_event_request_id(event->payload, r) == NGX_ERROR){
+    if(ngx_http_hercules_event_request_id(event->payload, r, mcf) == NGX_ERROR){
         goto error;
     }
 
     /* /NginxEvent/node */
-    if(ngx_http_hercules_event_node(event->payload, r) == NGX_ERROR){
+    if(ngx_http_hercules_event_node(event->payload, r, mcf) == NGX_ERROR){
         goto error;
     }
 
