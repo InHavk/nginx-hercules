@@ -23,4 +23,16 @@ static void ngx_http_hercules_exit_process(ngx_cycle_t* cycle);
 static void* ngx_http_hercules_create_conf(ngx_conf_t* cf);
 static void ngx_http_hercules_flush_handler(ngx_event_t* ev);
 static void ngx_http_hercules_flush_buffer(ngx_http_hercules_main_conf_t* conf, ngx_log_t* log);
+static u_int ngx_http_hercules_event_host(List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf);
+static u_int ngx_http_hercules_event_uri(List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf);
+static u_int ngx_http_hercules_event_args(List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf);
+static u_int ngx_http_hercules_event_status(List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf);
+static u_int ngx_http_hercules_event_method(List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf);
+static u_int ngx_http_hercules_event_proto(List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf);
+static u_int ngx_http_hercules_event_req_headers(List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf);
+static u_int ngx_http_hercules_event_res_headers(List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf);
+static u_int ngx_http_hercules_event_counters(List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf);
+static u_int ngx_http_hercules_event_connection(List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf);
+static u_int ngx_http_hercules_event_request_id(List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf);
+static u_int ngx_http_hercules_event_node(List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf);
 #endif
