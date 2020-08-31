@@ -291,7 +291,7 @@ static ngx_int_t ngx_http_hercules_event_args(Event_pool* pool, List* root_conta
         /* if key exist */
         if(key_inx > 0){
     /* /NginxEvent/args/<container> */
-            List* container_args = vector_add_Container(vector_args);
+            List* container_args = vector_add_Container(pool, vector_args);
             key[key_inx] = '\0';
             value[value_inx] = '\0';
             container_add_tag_String(pool, container_args, 1, "k", key);
