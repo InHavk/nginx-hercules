@@ -421,6 +421,9 @@ static u_int ngx_http_hercules_event_res_headers(List* root_container, ngx_http_
     while(1){
         for(size_t i = 0; i < (size_t) res_headers_part->nelts; ++i){
             ngx_table_elt_t* header = ((ngx_table_elt_t*) req_headers_part->elts) + i;
+            if(header == NULL){
+                continue;
+            }
             STR_FROM_NGX_STR(s_res_key, r->pool, header->key);
             for(size_t key_i = 0; key_i < header->key.len; ++key_i){
                 s_res_key[key_i] = ngx_tolower(s_res_key[key_i]);
