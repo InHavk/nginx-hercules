@@ -2,7 +2,7 @@ USE_OPENSSL=YES
 ngx_module_type=HTTP
 ngx_addon_name=hercules_log
 ngx_module_name=ngx_http_hercules_module
-ngx_module_srcs="$ngx_addon_dir/ngx_http_hercules_log_module.c $ngx_addon_dir/../libs/libhercules/src/libhercules.c $ngx_addon_dir/../libs/libhercules/libs/list.c $ngx_addon_dir/../libs/libhercules/src/pool.c $ngx_addon_dir/../libs/libhercules/src/pool/simple_pool.c"
+ngx_module_srcs="$ngx_addon_dir/ngx_http_hercules_log_module.c $ngx_addon_dir/../libs/libhercules/src/libhercules.c $ngx_addon_dir/../libs/libhercules/libs/list.c $ngx_addon_dir/../libs/libhercules/src/pool.c $ngx_addon_dir/libhercules_pool.c"
 ngx_module_incs="$ngx_addon_dir/../libs/libhercules/src $ngx_addon_dir/../libs/libhercules/libs"
 ngx_module_libs=""
 
