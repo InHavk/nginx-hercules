@@ -41,80 +41,79 @@ static ngx_int_t ngx_http_hercules_handler(ngx_http_request_t *r){
     uint8_t* uuid = ngx_palloc(r->pool, sizeof(uint8_t) * 16);
     generate_uuid_v4(uuid);
     uint64_t timestamp = generate_current_timestamp();
-    Event* event = event_create(0x01, timestamp, uuid);
+    Event_pool* pool = pool_init();
+    Event* event = event_create(pool, 0x01, timestamp, uuid);
 
     /* container /NginxEvent is empty */
 
     /* /NginxEvent/time = Long*/
-    container_add_tag_Long(event->payload, 4, "time", timestamp);
+    container_add_tag_Long(pool, event->payload, 4, "time", timestamp);
 
     /* /NginxEvent/host = String */
-    if(ngx_http_hercules_event_host(event->payload, r, mcf) == NGX_ERROR){
+    if(ngx_http_hercules_event_host(pool, event->payload, r, mcf) == NGX_ERROR){
         goto error;
     }
 
     /* /NginxEvent/uri = String */
-    if(ngx_http_hercules_event_uri(event->payload, r, mcf) == NGX_ERROR){
+    if(ngx_http_hercules_event_uri(pool, event->payload, r, mcf) == NGX_ERROR){
         goto error;
     }
 
     /* /NginxEvent/args */
-    if(ngx_http_hercules_event_args(event->payload, r, mcf) == NGX_ERROR){
+    if(ngx_http_hercules_event_args(pool, event->payload, r, mcf) == NGX_ERROR){
         goto error;
     }
     
     /* /NginxEvent/status */
-    if(ngx_http_hercules_event_status(event->payload, r, mcf) == NGX_ERROR){
+    if(ngx_http_hercules_event_status(pool, event->payload, r, mcf) == NGX_ERROR){
         goto error;
     }
 
     /* /NginxEvent/method */
-    if(ngx_http_hercules_event_method(event->payload, r, mcf) == NGX_ERROR){
+    if(ngx_http_hercules_event_method(pool, event->payload, r, mcf) == NGX_ERROR){
         goto error;
     }
 
     /* /NginxEvent/proto */
-    if(ngx_http_hercules_event_proto(event->payload, r, mcf) == NGX_ERROR){
+    if(ngx_http_hercules_event_proto(pool, event->payload, r, mcf) == NGX_ERROR){
         goto error;
     }
 
     /* /NginxEvent/req_headers */
-    if(ngx_http_hercules_event_req_headers(event->payload, r, mcf) == NGX_ERROR){
+    if(ngx_http_hercules_event_req_headers(pool, event->payload, r, mcf) == NGX_ERROR){
         goto error;
     }
 
     /* /NginxEvent/res_headers */
-    if(ngx_http_hercules_event_res_headers(event->payload, r, mcf) == NGX_ERROR){
+    if(ngx_http_hercules_event_res_headers(pool, event->payload, r, mcf) == NGX_ERROR){
         goto error;
     }
 
     /* /NginxEvent/upstream_status */
     /* /NginxEvent/upstream_addr */
     /* /NginxEvent/counters */
-    if(ngx_http_hercules_event_res_counters(event->payload, r, mcf) == NGX_ERROR){
+    if(ngx_http_hercules_event_res_counters(pool, event->payload, r, mcf) == NGX_ERROR){
         goto error;
     }
 
     /* /NginxEvent/connection */
-    if(ngx_http_hercules_event_connection(event->payload, r, mcf) == NGX_ERROR){
+    if(ngx_http_hercules_event_connection(pool, event->payload, r, mcf) == NGX_ERROR){
         goto error;
     }
 
     /* /NginxEvent/request_id */
-    if(ngx_http_hercules_event_request_id(event->payload, r, mcf) == NGX_ERROR){
+    if(ngx_http_hercules_event_request_id(pool, event->payload, r, mcf) == NGX_ERROR){
         goto error;
     }
 
     /* /NginxEvent/node */
-    if(ngx_http_hercules_event_node(event->payload, r, mcf) == NGX_ERROR){
+    if(ngx_http_hercules_event_node(pool, event->payload, r, mcf) == NGX_ERROR){
         goto error;
     }
 
     /* container /NginxEvent is full */
 
     Event_binary* event_binary = event_to_bin(event);
-    /*size_t* event_binary_size = ngx_palloc(r->pool, sizeof(size_t));
-    char* event_binary = event_to_bin(event, event_binary_size);*/
 
     event_free(event);
 
@@ -149,7 +148,6 @@ static ngx_int_t ngx_http_hercules_handler(ngx_http_request_t *r){
     pos += stream_size;
     mcf->buffer->pos = pos;
 
-    //ngx_pfree(r->pool, event_binary_size);
     ngx_free(event_binary);
 
     mcf->event->log = ngx_cycle->log;
@@ -241,24 +239,24 @@ static void ngx_http_hercules_flush_handler(ngx_event_t* ev){
     ngx_http_hercules_flush_buffer(conf, ev->log);
 }
 
-static u_int ngx_http_hercules_event_host(List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf){
+static u_int ngx_http_hercules_event_host(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf){
     if(r->headers_in.host != NULL){
         STR_FROM_NGX_STR(s_host, r->pool, r->headers_in.host->value);
-        container_add_tag_String(root_container, 4, "host", s_host);
+        container_add_tag_String(pool, root_container, 4, "host", s_host);
     } else {
-        container_add_tag_String(root_container, 4, "host", "");
+        container_add_tag_String(pool, root_container, 4, "host", "");
     }
     return NGX_OK;
 }
 
-static u_int ngx_http_hercules_event_uri(List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf){
+static u_int ngx_http_hercules_event_uri(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf){
     STR_FROM_NGX_STR(s_uri, r->pool, r->uri);
-    container_add_tag_String(root_container, 3, "uri", s_uri);
+    container_add_tag_String(pool, root_container, 3, "uri", s_uri);
     return NGX_OK;
 }
 
-static u_int ngx_http_hercules_event_args(List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf){
-    Vector* vector_args = (Vector*) container_add_tag_Vector(root_container, CONTAINER, 4, "args")->value;
+static u_int ngx_http_hercules_event_args(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf){
+    Vector* vector_args = (Vector*) container_add_tag_Vector(pool, root_container, CONTAINER, 4, "args")->value;
     char* key = ngx_palloc(r->pool, sizeof(char) * (r->args.len + 1));
     size_t key_inx = 0;
     char* value = ngx_palloc(r->pool, sizeof(char) * (r->args.len + 1));
@@ -296,8 +294,8 @@ static u_int ngx_http_hercules_event_args(List* root_container, ngx_http_request
             List* container_args = vector_add_Container(vector_args);
             key[key_inx] = '\0';
             value[value_inx] = '\0';
-            container_add_tag_String(container_args, 1, "k", key);
-            container_add_tag_String(container_args, 1, "v", value);
+            container_add_tag_String(pool, container_args, 1, "k", key);
+            container_add_tag_String(pool, container_args, 1, "v", value);
         }
         key_full = 0;
         value_full = 0;
@@ -307,12 +305,12 @@ static u_int ngx_http_hercules_event_args(List* root_container, ngx_http_request
     return NGX_OK;
 }
 
-static u_int ngx_http_hercules_event_status(List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf){
-    container_add_tag_Short(root_container, 6, "status", (int16_t) r->headers_out.status);
+static u_int ngx_http_hercules_event_status(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf){
+    container_add_tag_Short(pool, root_container, 6, "status", (int16_t) r->headers_out.status);
     return NGX_OK;
 }
 
-static u_int ngx_http_hercules_event_method(List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf){
+static u_int ngx_http_hercules_event_method(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf){
     uint8_t b_method;
     switch(r->method){
         case NGX_HTTP_HEAD:
@@ -365,18 +363,18 @@ static u_int ngx_http_hercules_event_method(List* root_container, ngx_http_reque
             b_method = 0xFF;
             break;
     }
-    container_add_tag_Byte(root_container, 6, "method", b_method);
+    container_add_tag_Byte(pool, root_container, 6, "method", b_method);
     return NGX_OK;
 }
 
-static u_int ngx_http_hercules_event_proto(List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf){
+static u_int ngx_http_hercules_event_proto(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf){
     STR_FROM_NGX_STR(s_proto, r->pool, r->http_protocol);
-    container_add_tag_String(root_container, 5, "proto", s_proto);
+    container_add_tag_String(pool, root_container, 5, "proto", s_proto);
     return NGX_OK;
 }
 
-static u_int ngx_http_hercules_event_req_headers(List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf){
-    Vector* vector_req_headers = (Vector*) container_add_tag_Vector(root_container, CONTAINER, 11, "req_headers")->value;
+static u_int ngx_http_hercules_event_req_headers(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf){
+    Vector* vector_req_headers = (Vector*) container_add_tag_Vector(pool, root_container, CONTAINER, 11, "req_headers")->value;
     ngx_list_part_t* req_headers_part = &r->headers_in.headers.part;
     while(1){
         for(size_t i = 0; i < (size_t) req_headers_part->nelts; ++i){
@@ -384,14 +382,14 @@ static u_int ngx_http_hercules_event_req_headers(List* root_container, ngx_http_
             if(header == NULL){
                 continue;
             }
-            List* container_req_header = vector_add_Container(vector_req_headers);
+            List* container_req_header = vector_add_Container(pool, vector_req_headers);
             STR_FROM_NGX_STR(s_req_key, r->pool, header->key);
             for(size_t key_i = 0; key_i < header->key.len; ++key_i){
                 s_req_key[key_i] = ngx_tolower(s_req_key[key_i]);
             }
             STR_FROM_NGX_STR(s_req_value, r->pool, header->value);
-            container_add_tag_String(container_req_header, 1, "k", s_req_key);
-            container_add_tag_String(container_req_header, 1, "v", s_req_value);
+            container_add_tag_String(pool, container_req_header, 1, "k", s_req_key);
+            container_add_tag_String(pool, container_req_header, 1, "v", s_req_value);
         }
         
         if(req_headers_part == r->headers_in.headers.last){
@@ -403,21 +401,21 @@ static u_int ngx_http_hercules_event_req_headers(List* root_container, ngx_http_
     return NGX_OK;
 }
 
-static u_int ngx_http_hercules_event_res_headers(List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf){
-    Vector* vector_res_headers = (Vector*) container_add_tag_Vector(root_container, CONTAINER, 11, "res_headers")->value;
+static u_int ngx_http_hercules_event_res_headers(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf){
+    Vector* vector_res_headers = (Vector*) container_add_tag_Vector(pool, root_container, CONTAINER, 11, "res_headers")->value;
     /* /NginxEvent/res_headers/<content-type> */
     if(r->headers_out.content_type.data != NULL){
-        List* container_content_type = vector_add_Container(vector_res_headers);
-        container_add_tag_String(container_content_type, 1, "k", "content-type");
+        List* container_content_type = vector_add_Container(pool, vector_res_headers);
+        container_add_tag_String(pool, container_content_type, 1, "k", "content-type");
         STR_FROM_NGX_STR(s_value_content_type, r->pool, r->headers_out.content_type);
-        container_add_tag_String(container_content_type, 1, "v", s_value_content_type);
+        container_add_tag_String(pool, container_content_type, 1, "v", s_value_content_type);
     }
     /* /NginxEvent/res_headers/<content_length> */
     if(r->headers_out.content_length != NULL && r->headers_out.content_length->value.data != NULL){
-        List* container_content_length = vector_add_Container(vector_res_headers);
-        container_add_tag_String(container_content_length, 1, "k", "content-length");
+        List* container_content_length = vector_add_Container(pool, vector_res_headers);
+        container_add_tag_String(pool, container_content_length, 1, "k", "content-length");
         STR_FROM_NGX_STR(s_value_content_length, r->pool, r->headers_out.content_length->value);
-        container_add_tag_String(container_content_length, 1, "v", s_value_content_length);
+        container_add_tag_String(pool, container_content_length, 1, "v", s_value_content_length);
     }
     /* /NginxEvent/res_headers/<other> */
 
@@ -435,9 +433,9 @@ static u_int ngx_http_hercules_event_res_headers(List* root_container, ngx_http_
             if(ngx_strcmp(s_res_key, "x-singular-backend") == 0 ||
              ngx_strcmp(s_res_key, "x-kontur-trace-id") == 0 ){
                 STR_FROM_NGX_STR(s_res_value, r->pool, header->value);
-                List* container_res_header = vector_add_Container(vector_res_headers);
-                container_add_tag_String(container_res_header, 1, "k", s_res_key);
-                container_add_tag_String(container_res_header, 1, "v", s_res_value);
+                List* container_res_header = vector_add_Container(pool, vector_res_headers);
+                container_add_tag_String(pool, container_res_header, 1, "k", s_res_key);
+                container_add_tag_String(pool, container_res_header, 1, "v", s_res_value);
             }
         }
 
@@ -450,36 +448,36 @@ static u_int ngx_http_hercules_event_res_headers(List* root_container, ngx_http_
     return NGX_OK;
 }
 
-static u_int ngx_http_hercules_event_counters(List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf){
+static u_int ngx_http_hercules_event_counters(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf){
     /* /NginxEvent/upstream_status */
-    Vector* vector_upstream_status = (Vector*) container_add_tag_Vector(root_container, SHORT, 15, "upstream_status")->value;
+    Vector* vector_upstream_status = (Vector*) container_add_tag_Vector(pool, root_container, SHORT, 15, "upstream_status")->value;
 
     /* /NginxEvent/upstream_addr */
-    Vector* vector_upstream_addr = (Vector*) container_add_tag_Vector(root_container, STRING, 13, "upstream_addr")->value;
+    Vector* vector_upstream_addr = (Vector*) container_add_tag_Vector(pool, root_container, STRING, 13, "upstream_addr")->value;
 
     /* /NginxEvent/counters */
-    List* container_counters = (List*) container_add_tag_Container(root_container, 8, "counters")->value;
+    List* container_counters = (List*) container_add_tag_Container(pool, root_container, 8, "counters")->value;
 
     /* /NginxEvent/counters/req_len */
-    container_add_tag_Integer(container_counters, 7, "req_len", (int32_t) r->request_length);
+    container_add_tag_Integer(pool, container_counters, 7, "req_len", (int32_t) r->request_length);
 
     /* /NginxEvent/counters/upstream_connect_time */
-    Vector* vector_upstream_connect_time = (Vector*) container_add_tag_Vector(container_counters, LONG, 21, "upstream_connect_time")->value;
+    Vector* vector_upstream_connect_time = (Vector*) container_add_tag_Vector(pool, container_counters, LONG, 21, "upstream_connect_time")->value;
 
     /* /NginxEvent/counters/upstream_req_bytes */
-    Vector* vector_upstream_req_bytes = (Vector*) container_add_tag_Vector(container_counters, LONG, 18, "upstream_req_bytes")->value;
+    Vector* vector_upstream_req_bytes = (Vector*) container_add_tag_Vector(pool, container_counters, LONG, 18, "upstream_req_bytes")->value;
 
     /* /NginxEvent/counters/upstream_res_bytes */
-    Vector* vector_upstream_res_bytes = (Vector*) container_add_tag_Vector(container_counters, LONG, 18, "upstream_res_bytes")->value;
+    Vector* vector_upstream_res_bytes = (Vector*) container_add_tag_Vector(pool, container_counters, LONG, 18, "upstream_res_bytes")->value;
 
     /* /NginxEvent/counters/upstream_res_header_time */
-    Vector* vector_upstream_res_header_time = (Vector*) container_add_tag_Vector(container_counters, LONG, 24, "upstream_res_header_time")->value;
+    Vector* vector_upstream_res_header_time = (Vector*) container_add_tag_Vector(pool, container_counters, LONG, 24, "upstream_res_header_time")->value;
 
     /* /NginxEvent/counters/upstream_res_len */
-    Vector* vector_upstream_res_len = (Vector*) container_add_tag_Vector(container_counters, LONG, 16, "upstream_res_len")->value;
+    Vector* vector_upstream_res_len = (Vector*) container_add_tag_Vector(pool, container_counters, LONG, 16, "upstream_res_len")->value;
 
     /* /NginxEvent/counters/upstream_res_time */
-    Vector* vector_upstream_res_time = (Vector*) container_add_tag_Vector(container_counters, LONG, 17, "upstream_res_time")->value;
+    Vector* vector_upstream_res_time = (Vector*) container_add_tag_Vector(pool, container_counters, LONG, 17, "upstream_res_time")->value;
     
     if(r->upstream_states != NULL){
         ngx_http_upstream_state_t* upstream_state = r->upstream_states->elts;
@@ -487,37 +485,37 @@ static u_int ngx_http_hercules_event_counters(List* root_container, ngx_http_req
             if(i == (size_t) r->upstream_states->nelts){
                 break;
             }
-            vector_add_Short(vector_upstream_status, (int16_t) upstream_state[i].status);
+            vector_add_Short(pool, vector_upstream_status, (int16_t) upstream_state[i].status);
             char* string_upstream_addr = ngx_palloc(r->pool, (sizeof(char) * upstream_state[i].peer->len) + 1);
             string_upstream_addr[upstream_state[i].peer->len] = '\0';
             ngx_memcpy(string_upstream_addr, upstream_state[i].peer->data, upstream_state[i].peer->len);
-            vector_add_String(vector_upstream_addr, string_upstream_addr);
-            vector_add_Long(vector_upstream_connect_time, (int64_t) upstream_state[i].connect_time);
-            vector_add_Long(vector_upstream_req_bytes, (int64_t) upstream_state[i].bytes_sent);
-            vector_add_Long(vector_upstream_res_bytes, (int64_t) upstream_state[i].bytes_received);
-            vector_add_Long(vector_upstream_res_header_time, (int64_t) upstream_state[i].header_time);
-            vector_add_Long(vector_upstream_res_len, (int64_t) upstream_state[i].response_length);
-            vector_add_Long(vector_upstream_res_time, (int64_t) upstream_state[i].response_time);
+            vector_add_String(pool, vector_upstream_addr, string_upstream_addr);
+            vector_add_Long(pool, vector_upstream_connect_time, (int64_t) upstream_state[i].connect_time);
+            vector_add_Long(pool, vector_upstream_req_bytes, (int64_t) upstream_state[i].bytes_sent);
+            vector_add_Long(pool, vector_upstream_res_bytes, (int64_t) upstream_state[i].bytes_received);
+            vector_add_Long(pool, vector_upstream_res_header_time, (int64_t) upstream_state[i].header_time);
+            vector_add_Long(pool, vector_upstream_res_len, (int64_t) upstream_state[i].response_length);
+            vector_add_Long(pool, vector_upstream_res_time, (int64_t) upstream_state[i].response_time);
         }
     }
     
     /* /NginxEvent/counters/res_bytes */
-    container_add_tag_Long(container_counters, 9, "res_bytes", (int64_t) r->connection->sent);
+    container_add_tag_Long(pool, container_counters, 9, "res_bytes", (int64_t) r->connection->sent);
 
     /* /NginxEvent/counters/full_time */
     ngx_time_t* tp_full_time = ngx_timeofday();
     ngx_msec_int_t ms_full_time = (ngx_msec_int_t) ((tp_full_time->sec - r->start_sec) * 1000 + (tp_full_time->msec - r->start_msec));
     ms_full_time = ngx_max(ms_full_time, 0);
-    container_add_tag_Long(container_counters, 9, "full_time", (int64_t) ms_full_time);
+    container_add_tag_Long(pool, container_counters, 9, "full_time", (int64_t) ms_full_time);
 
     return NGX_OK;
 }
 
-static u_int ngx_http_hercules_event_connection(List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf){
-    List* container_connection = (List*) container_add_tag_Container(root_container, 10, "connection")->value;
+static u_int ngx_http_hercules_event_connection(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf){
+    List* container_connection = (List*) container_add_tag_Container(pool, root_container, 10, "connection")->value;
 
     /* /NginxEvent/connection/port */
-    container_add_tag_Short(container_connection, 4, "port", (int16_t) ngx_inet_get_port(r->connection->local_sockaddr));
+    container_add_tag_Short(pool, container_connection, 4, "port", (int16_t) ngx_inet_get_port(r->connection->local_sockaddr));
 
     /* /NginxEvent/connection/addr */
     ngx_str_t  connection_addr;
@@ -528,54 +526,54 @@ static u_int ngx_http_hercules_event_connection(List* root_container, ngx_http_r
     if (ngx_connection_local_sockaddr(r->connection, &connection_addr, 0) == NGX_OK) {
         string_connection_addr[connection_addr.len] = '\0';
         ngx_memcpy(string_connection_addr, connection_addr.data, connection_addr.len);
-        container_add_tag_String(container_connection, 4, "addr", "");
+        container_add_tag_String(pool, container_connection, 4, "addr", "");
     }
 
     /* /NginxEvent/connection/client_ip */
     char string_client_addr[46];
     ngx_memcpy(string_client_addr, (char*) r->connection->addr_text.data, r->connection->addr_text.len);
     string_client_addr[r->connection->addr_text.len] = '\0';
-    container_add_tag_String(container_connection, 9, "client_ip", string_client_addr);
+    container_add_tag_String(pool, container_connection, 9, "client_ip", string_client_addr);
 
     /* /NginxEvent/connection/client_port */
-    container_add_tag_Short(container_connection, 11, "client_port", (int16_t) ngx_inet_get_port(r->connection->sockaddr));
+    container_add_tag_Short(pool, container_connection, 11, "client_port", (int16_t) ngx_inet_get_port(r->connection->sockaddr));
 
     
     if(r->connection->ssl){
         /* /NginxEvent/connection/tls_verison */
-        container_add_tag_String(container_connection, 11, "tls_version", (char*) SSL_get_version(r->connection->ssl->connection));
+        container_add_tag_String(pool, container_connection, 11, "tls_version", (char*) SSL_get_version(r->connection->ssl->connection));
 
         /* /NginxEvent/connection/cipher */
-        container_add_tag_String(container_connection, 6, "cipher", (char*) SSL_get_cipher_name(r->connection->ssl->connection));
+        container_add_tag_String(pool, container_connection, 6, "cipher", (char*) SSL_get_cipher_name(r->connection->ssl->connection));
     }
 
     /* /NginxEvent/connection/scheme */
     STR_FROM_NGX_STR(s_scheme, r->pool, r->schema);
-    container_add_tag_String(container_connection, 6, "scheme", s_scheme);
+    container_add_tag_String(pool, container_connection, 6, "scheme", s_scheme);
 
     /* /NginxEvent/connection/connection */
-    container_add_tag_Long(container_connection, 10, "connection", (int64_t) r->connection->number);
+    container_add_tag_Long(pool, container_connection, 10, "connection", (int64_t) r->connection->number);
 
     return NGX_OK;
 }
 
-static u_int ngx_http_hercules_event_request_id(List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf){
+static u_int ngx_http_hercules_event_request_id(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf){
     u_char random_bytes[16];
     u_char s_request_id[33];
     s_request_id[32] = '\0';
     if (RAND_bytes(random_bytes, 16) == 1) {
         ngx_hex_dump(s_request_id, random_bytes, 16);
-        container_add_tag_String(root_container, 10, "request_id", (char*) s_request_id);
+        container_add_tag_String(pool, root_container, 10, "request_id", (char*) s_request_id);
     }
     return NGX_OK;
 }
 
-static u_int ngx_http_hercules_event_node(List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf){
+static u_int ngx_http_hercules_event_node(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf){
     ngx_http_variable_value_t* var_node_name = ngx_http_get_indexed_variable(r, mcf->node_var_inx);
     char* s_node_name = ngx_palloc(r->pool, sizeof(char) * (var_node_name->len + 1));
     s_node_name[var_node_name->len] = '\0';
     ngx_memcpy(s_node_name, var_node_name->data, var_node_name->len);
-    container_add_tag_String(root_container, 4, "node", s_node_name);
+    container_add_tag_String(pool, root_container, 4, "node", s_node_name);
     return NGX_OK;
 }
 
