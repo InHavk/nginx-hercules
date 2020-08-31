@@ -112,8 +112,9 @@ static ngx_int_t ngx_http_hercules_handler(ngx_http_request_t *r){
 
     /* container /NginxEvent is full */
 
-    size_t* event_binary_size = ngx_palloc(r->pool, sizeof(size_t));
-    char* event_binary = event_to_bin(event, event_binary_size);
+    Event_binary* event_binary = event_to_bin(event);
+    /*size_t* event_binary_size = ngx_palloc(r->pool, sizeof(size_t));
+    char* event_binary = event_to_bin(event, event_binary_size);*/
 
     event_free(event);
 
@@ -123,8 +124,8 @@ static ngx_int_t ngx_http_hercules_handler(ngx_http_request_t *r){
     ngx_memcpy(stream_name, var_hercules_stream->data, var_hercules_stream->len);
     uint8_t stream_size = var_hercules_stream->len;
 
-    size_t message_length = sizeof(uint32_t) + sizeof(uint8_t) + *event_binary_size + stream_size;
-    uint32_t be_event_size = htobe32((uint32_t) *event_binary_size);
+    size_t message_length = sizeof(uint32_t) + sizeof(uint8_t) + event_binary->size + stream_size;
+    uint32_t be_event_size = htobe32((uint32_t) event_binary->size);
     
     ngx_log_error(NGX_LOG_INFO,r->connection->log, 0,
                    "buffer size: %d", mcf->buffer->end - mcf->buffer->pos);
@@ -142,13 +143,13 @@ static ngx_int_t ngx_http_hercules_handler(ngx_http_request_t *r){
     *pos++ = (uint8_t) ((be_event_size & 0x00FF0000) >> 16);
     *pos++ = (uint8_t) ((be_event_size & 0xFF000000) >> 24);
     *pos++ = stream_size;
-    ngx_memcpy(pos, event_binary, *event_binary_size);
-    pos += *event_binary_size;
+    ngx_memcpy(pos, event_binary->value, event_binary->size);
+    pos += event_binary->size;
     ngx_memcpy(pos, stream_name, stream_size);
     pos += stream_size;
     mcf->buffer->pos = pos;
 
-    ngx_pfree(r->pool, event_binary_size);
+    //ngx_pfree(r->pool, event_binary_size);
     ngx_free(event_binary);
 
     mcf->event->log = ngx_cycle->log;
