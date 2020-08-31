@@ -380,6 +380,9 @@ static u_int ngx_http_hercules_event_req_headers(List* root_container, ngx_http_
     while(1){
         for(size_t i = 0; i < (size_t) req_headers_part->nelts; ++i){
             ngx_table_elt_t* header = ((ngx_table_elt_t*) req_headers_part->elts) + i;
+            if(header == NULL){
+                continue;
+            }
             List* container_req_header = vector_add_Container(vector_req_headers);
             STR_FROM_NGX_STR(s_req_key, r->pool, header->key);
             for(size_t key_i = 0; key_i < header->key.len; ++key_i){
