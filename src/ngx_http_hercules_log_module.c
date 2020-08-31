@@ -92,7 +92,7 @@ static ngx_int_t ngx_http_hercules_handler(ngx_http_request_t *r){
     /* /NginxEvent/upstream_status */
     /* /NginxEvent/upstream_addr */
     /* /NginxEvent/counters */
-    if(ngx_http_hercules_event_res_counters(pool, event->payload, r, mcf) == NGX_ERROR){
+    if(ngx_http_hercules_event_counters(pool, event->payload, r, mcf) == NGX_ERROR){
         goto error;
     }
 
@@ -422,7 +422,7 @@ static ngx_int_t ngx_http_hercules_event_res_headers(Event_pool* pool, List* roo
     ngx_list_part_t* res_headers_part = &r->headers_out.headers.part;
     while(1){
         for(size_t i = 0; i < (size_t) res_headers_part->nelts; ++i){
-            ngx_table_elt_t* header = ((ngx_table_elt_t*) req_headers_part->elts) + i;
+            ngx_table_elt_t* header = ((ngx_table_elt_t*) res_headers_part->elts) + i;
             if(header == NULL){
                 continue;
             }
