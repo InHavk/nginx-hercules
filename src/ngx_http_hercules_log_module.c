@@ -53,64 +53,64 @@ static ngx_int_t ngx_http_hercules_handler(ngx_http_request_t *r){
 
     /* /NginxEvent/host = String */
     if(ngx_http_hercules_event_host(pool, event->payload, r, mcf) == NGX_ERROR){
-        goto error;
+        return NGX_ERROR;
     }
 
     /* /NginxEvent/uri = String */
     if(ngx_http_hercules_event_uri(pool, event->payload, r, mcf) == NGX_ERROR){
-        goto error;
+        return NGX_ERROR;
     }
 
     /* /NginxEvent/args */
     if(ngx_http_hercules_event_args(pool, event->payload, r, mcf) == NGX_ERROR){
-        goto error;
+        return NGX_ERROR;
     }
     
     /* /NginxEvent/status */
     if(ngx_http_hercules_event_status(pool, event->payload, r, mcf) == NGX_ERROR){
-        goto error;
+        return NGX_ERROR;
     }
 
     /* /NginxEvent/method */
     if(ngx_http_hercules_event_method(pool, event->payload, r, mcf) == NGX_ERROR){
-        goto error;
+        return NGX_ERROR;
     }
 
     /* /NginxEvent/proto */
     if(ngx_http_hercules_event_proto(pool, event->payload, r, mcf) == NGX_ERROR){
-        goto error;
+        return NGX_ERROR;
     }
 
     /* /NginxEvent/req_headers */
     if(ngx_http_hercules_event_req_headers(pool, event->payload, r, mcf) == NGX_ERROR){
-        goto error;
+        return NGX_ERROR;
     }
 
     /* /NginxEvent/res_headers */
     if(ngx_http_hercules_event_res_headers(pool, event->payload, r, mcf) == NGX_ERROR){
-        goto error;
+        return NGX_ERROR;
     }
 
     /* /NginxEvent/upstream_status */
     /* /NginxEvent/upstream_addr */
     /* /NginxEvent/counters */
     if(ngx_http_hercules_event_counters(pool, event->payload, r, mcf) == NGX_ERROR){
-        goto error;
+        return NGX_ERROR;
     }
 
     /* /NginxEvent/connection */
     if(ngx_http_hercules_event_connection(pool, event->payload, r, mcf) == NGX_ERROR){
-        goto error;
+        return NGX_ERROR;
     }
 
     /* /NginxEvent/request_id */
     if(ngx_http_hercules_event_request_id(pool, event->payload, r, mcf) == NGX_ERROR){
-        goto error;
+        return NGX_ERROR;
     }
 
     /* /NginxEvent/node */
     if(ngx_http_hercules_event_node(pool, event->payload, r, mcf) == NGX_ERROR){
-        goto error;
+        return NGX_ERROR;
     }
 
     /* container /NginxEvent is full */
@@ -156,9 +156,6 @@ static ngx_int_t ngx_http_hercules_handler(ngx_http_request_t *r){
     }
 
     return NGX_OK;
-error:
-    //event_free(event);
-    return NGX_ERROR;
 }
 
 static void* ngx_http_hercules_create_conf(ngx_conf_t* cf){
