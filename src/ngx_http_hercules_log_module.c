@@ -117,7 +117,7 @@ static ngx_int_t ngx_http_hercules_handler(ngx_http_request_t *r){
 
     Event_binary* event_binary = event_to_bin(event);
 
-    event_free(event);
+    //event_free(event);
 
     ngx_http_variable_value_t* var_hercules_stream = ngx_http_get_indexed_variable(r, mcf->hercules_stream_var_inx);
     char* stream_name = ngx_palloc(r->pool, sizeof(char) * (var_hercules_stream->len + 1));
@@ -150,8 +150,6 @@ static ngx_int_t ngx_http_hercules_handler(ngx_http_request_t *r){
     pos += stream_size;
     mcf->buffer->pos = pos;
 
-    ngx_free(event_binary);
-
     mcf->event->log = ngx_cycle->log;
     if(!mcf->event->timer_set){
         ngx_event_add_timer(mcf->event, mcf->flush);
@@ -159,7 +157,7 @@ static ngx_int_t ngx_http_hercules_handler(ngx_http_request_t *r){
 
     return NGX_OK;
 error:
-    event_free(event);
+    //event_free(event);
     return NGX_ERROR;
 }
 
