@@ -372,6 +372,9 @@ static ngx_int_t ngx_http_hercules_event_proto(Event_pool* pool, List* root_cont
 
 static ngx_int_t ngx_http_hercules_event_req_headers(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf){
     Vector* vector_req_headers = (Vector*) container_add_tag_Vector(pool, root_container, CONTAINER, 11, "req_headers")->value;
+    if(r->headers_in.headers.nalloc == 0){
+        return NGX_OK;
+    }
     ngx_list_part_t* req_headers_part = &r->headers_in.headers.part;
     while(1){
         for(size_t i = 0; i < (size_t) req_headers_part->nelts; ++i){
