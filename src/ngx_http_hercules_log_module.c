@@ -392,10 +392,9 @@ static ngx_int_t ngx_http_hercules_event_req_headers(Event_pool* pool, List* roo
             container_add_tag_String(pool, container_req_header, 1, "v", s_req_value);
         }
         
-        if(req_headers_part == r->headers_in.headers.last){
+        req_headers_part = req_headers_part->next;
+        if(req_headers_part == NULL){
             break;
-        } else {
-            req_headers_part = req_headers_part->next;
         }
     }
     return NGX_OK;
@@ -439,10 +438,9 @@ static ngx_int_t ngx_http_hercules_event_res_headers(Event_pool* pool, List* roo
             }
         }
 
-        if(res_headers_part == r->headers_out.headers.last){
+        res_headers_part = res_headers_part->next;
+        if(res_headers_part == NULL){
             break;
-        } else {
-            res_headers_part = res_headers_part->next;
         }
     }
     return NGX_OK;
