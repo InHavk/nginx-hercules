@@ -485,7 +485,6 @@ static ngx_int_t ngx_http_hercules_event_counters(Event_pool* pool, List* root_c
             if(i == (size_t) r->upstream_states->nelts){
                 break;
             }
-            if()
             vector_add_Short(pool, vector_upstream_status, (int16_t) upstream_state[i].status);
             if(upstream_state[i].peer != NULL){
                 char* string_upstream_addr = ngx_palloc(r->pool, (sizeof(char) * upstream_state[i].peer->len) + 1);
