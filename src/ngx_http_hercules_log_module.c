@@ -485,11 +485,14 @@ static ngx_int_t ngx_http_hercules_event_counters(Event_pool* pool, List* root_c
             if(i == (size_t) r->upstream_states->nelts){
                 break;
             }
+            if()
             vector_add_Short(pool, vector_upstream_status, (int16_t) upstream_state[i].status);
-            char* string_upstream_addr = ngx_palloc(r->pool, (sizeof(char) * upstream_state[i].peer->len) + 1);
-            string_upstream_addr[upstream_state[i].peer->len] = '\0';
-            ngx_memcpy(string_upstream_addr, upstream_state[i].peer->data, upstream_state[i].peer->len);
-            vector_add_String(pool, vector_upstream_addr, string_upstream_addr);
+            if(upstream_state[i].peer != NULL){
+                char* string_upstream_addr = ngx_palloc(r->pool, (sizeof(char) * upstream_state[i].peer->len) + 1);
+                string_upstream_addr[upstream_state[i].peer->len] = '\0';
+                ngx_memcpy(string_upstream_addr, upstream_state[i].peer->data, upstream_state[i].peer->len);
+                vector_add_String(pool, vector_upstream_addr, string_upstream_addr);
+            }
             vector_add_Long(pool, vector_upstream_connect_time, (int64_t) upstream_state[i].connect_time);
             vector_add_Long(pool, vector_upstream_req_bytes, (int64_t) upstream_state[i].bytes_sent);
             vector_add_Long(pool, vector_upstream_res_bytes, (int64_t) upstream_state[i].bytes_received);
