@@ -127,6 +127,10 @@ static ngx_int_t ngx_http_hercules_handler(ngx_http_request_t *r){
 
     size_t message_length = sizeof(uint32_t) + sizeof(uint8_t) + event_binary->size + stream_size;
     uint32_t be_event_size = htobe32((uint32_t) event_binary->size);
+
+    if(mcf->buffer == NULL){
+        mcf->buffer = ngx_create_temp_buf(mcf->pool, HERCULES_LOG_BUFFER_SIZE);
+    }
     
     ngx_log_error(NGX_LOG_INFO,r->connection->log, 0,
                    "buffer size: %d", mcf->buffer->end - mcf->buffer->pos);
@@ -166,10 +170,7 @@ static void* ngx_http_hercules_create_conf(ngx_conf_t* cf){
         return NULL;
     }
 
-    mcf->buffer = ngx_create_temp_buf(cf->pool, HERCULES_LOG_BUFFER_SIZE);
-    if (mcf->buffer == NULL){
-        return NULL;
-    }
+    mcf->buffer = NULL;
 
     mcf->flush = HERCULES_LOG_BUFFER_FLUSH_TIME;
     mcf->event = ngx_pcalloc(cf->pool, sizeof(ngx_event_t));
