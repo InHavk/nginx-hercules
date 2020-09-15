@@ -9,7 +9,7 @@
 #include "ngx_http_hercules_log_struct.h"
 #include "ngx_http_hercules_log_network.h"
 
-#define HERCULES_LOG_BUFFER_SIZE 1024 * 1024 * 8
+#define HERCULES_LOG_BUFFER_SIZE 1024 * 1024 * 32
 #define HERCULES_LOG_BUFFER_FLUSH_TIME 10 * 1000
 
 #define STR_FROM_NGX_STR(variable, pool, value) \
