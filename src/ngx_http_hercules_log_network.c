@@ -111,6 +111,9 @@ static void ngx_http_hercules_send_metrics(ngx_http_hercules_main_conf_t* conf, 
         }
         ctx = task->ctx;
     } else {
+        if(conf->buffer == NULL){
+            return;
+        }
         task = NULL;
         ctx = ngx_palloc(conf->pool, sizeof(ngx_http_hercules_thread_sender_ctx_t));
     }
