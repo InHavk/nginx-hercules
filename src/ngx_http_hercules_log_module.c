@@ -560,10 +560,19 @@ static ngx_int_t ngx_http_hercules_event_request_id(Event_pool* pool, List* root
     u_char random_bytes[16];
     u_char s_request_id[33];
     s_request_id[32] = '\0';
+#if !(NGX_LINUX)
+    /* libcrypto call (openssl) */
     if (RAND_bytes(random_bytes, 16) == 1) {
+#endif
+#if (NGX_LINUX)
+    /* getrandom() system call. /dev/urandom as source */
+    /* required linux kernel >= 3.17 and glibc >= 2.25 */
+    if(getrandom(random_bytes, 16, 0)) {
+#endif
         ngx_hex_dump(s_request_id, random_bytes, 16);
         container_add_tag_String(pool, root_container, 10, "request_id", (char*) s_request_id);
     }
+
     return NGX_OK;
 }
 
