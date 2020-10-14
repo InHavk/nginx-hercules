@@ -41,7 +41,7 @@ void  event_pool_force_free(Event_pool* pool, void* obj){
 void  event_pool_init(struct event_pool* pool, void* args){
     pool->pool = args;
     pool->optional = ngx_palloc((ngx_pool_t*) pool->pool, sizeof(Pool_Optional));
-    ((Pool_Optional*) pool->optional)->start = ngx_palloc((ngx_pool_t*) pool->pool, DISPOSABLE_POOL_SIZE);
+    ((Pool_Optional*) pool->optional)->start = ngx_palloc((ngx_pool_t*) pool->pool, sizeof(uint8_t) * DISPOSABLE_POOL_SIZE);
     ((Pool_Optional*) pool->optional)->pos = ((Pool_Optional*) pool->optional)->start;
     ((Pool_Optional*) pool->optional)->end = ((Pool_Optional*) pool->optional)->start + DISPOSABLE_POOL_SIZE;
     ((Pool_Optional*) pool->optional)->size = DISPOSABLE_POOL_SIZE;
