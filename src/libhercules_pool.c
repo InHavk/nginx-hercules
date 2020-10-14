@@ -4,9 +4,9 @@
 #define DISPOSABLE_POOL_SIZE 1024*64
 
 typedef struct {
-    void* start;
-    void* end;
-    void* pos;
+    uint8_t* start;
+    uint8_t* end;
+    uint8_t* pos;
     size_t size;
 } Pool_Optional;
 
@@ -33,9 +33,7 @@ void  event_pool_free(Event_pool* pool, void* obj){
 }
 
 void  event_pool_force_free(Event_pool* pool, void* obj){
-    if(obj >= ((Pool_Optional*) pool->optional)->start && obj < ((Pool_Optional*) pool->optional)->end){
-        return
-    } else {
+    if(!(obj >= ((Pool_Optional*) pool->optional)->start && obj < ((Pool_Optional*) pool->optional)->end)){
         ngx_pfree((ngx_pool_t*) pool->pool, obj);
     }
 }
