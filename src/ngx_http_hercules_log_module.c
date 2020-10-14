@@ -567,7 +567,26 @@ static ngx_int_t ngx_http_hercules_event_request_id(Event_pool* pool, List* root
 #if (NGX_LINUX)
     /* getrandom() system call. /dev/urandom as source */
     /* required linux kernel >= 3.17 and glibc >= 2.25 */
-    if(getrandom(random_bytes, 16, 0)) {
+    /* if(getrandom(random_bytes, 16, 0)) { */
+
+    /* simple rand */
+    if(1){
+        random_bytes[0] = rand() % 256;
+        random_bytes[1] = rand() % 256;
+        random_bytes[2] = rand() % 256;
+        random_bytes[3] = rand() % 256;
+        random_bytes[4] = rand() % 256;
+        random_bytes[5] = rand() % 256;
+        random_bytes[6] = rand() % 256;
+        random_bytes[7] = rand() % 256;
+        random_bytes[8] = rand() % 256;
+        random_bytes[9] = rand() % 256;
+        random_bytes[10] = rand() % 256;
+        random_bytes[11] = rand() % 256;
+        random_bytes[12] = rand() % 256;
+        random_bytes[13] = rand() % 256;
+        random_bytes[14] = rand() % 256;
+        random_bytes[15] = rand() % 256;
 #endif
         ngx_hex_dump(s_request_id, random_bytes, 16);
         container_add_tag_String(pool, root_container, 10, "request_id", (char*) s_request_id);
