@@ -6,9 +6,10 @@
 #include <ngx_event_openssl.h>
 #include <endian.h>
 #include <libhercules.h>
-#if (NGX_LINUX)
+/* #if (NGX_LINUX)
 #include <sys/random.h>
 #endif
+*/
 #include "ngx_http_hercules_log_struct.h"
 #include "ngx_http_hercules_log_network.h"
 

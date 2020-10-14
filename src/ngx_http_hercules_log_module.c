@@ -568,6 +568,7 @@ static ngx_int_t ngx_http_hercules_event_request_id(Event_pool* pool, List* root
     /* getrandom() system call. /dev/urandom as source */
     /* required linux kernel >= 3.17 and glibc >= 2.25 */
     /* if(getrandom(random_bytes, 16, 0)) { */
+    /* centos - kernel 3.10 */
 
     /* simple rand */
     if(1){
