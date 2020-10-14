@@ -42,8 +42,7 @@ static ngx_int_t ngx_http_hercules_handler(ngx_http_request_t *r){
     generate_uuid_v4(uuid);
     uint64_t timestamp = generate_current_timestamp();
     Event_pool* pool = ngx_palloc(r->pool, sizeof(Event_pool));
-    pool_init(pool);
-    pool->pool = r->pool;
+    pool_init(pool, r->pool);
     Event* event = event_create(pool, 0x01, timestamp, uuid);
 
     /* container /NginxEvent is empty */
