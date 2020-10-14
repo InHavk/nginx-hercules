@@ -33,7 +33,7 @@ void  event_pool_free(Event_pool* pool, void* obj){
 }
 
 void  event_pool_force_free(Event_pool* pool, void* obj){
-    if(!(obj >= ((Pool_Optional*) pool->optional)->start && obj < ((Pool_Optional*) pool->optional)->end)){
+    if(!((uint8_t*) obj >= ((Pool_Optional*) pool->optional)->start && (uint8_t*) obj < ((Pool_Optional*) pool->optional)->end)){
         ngx_pfree((ngx_pool_t*) pool->pool, obj);
     }
 }
