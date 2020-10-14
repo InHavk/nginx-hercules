@@ -41,74 +41,74 @@ static ngx_int_t ngx_http_hercules_handler(ngx_http_request_t *r){
     uint8_t uuid[16];
     generate_uuid_v4(uuid);
     uint64_t timestamp = generate_current_timestamp();
-    Event_pool* pool = ngx_palloc(r->pool, sizeof(Event_pool));
-    pool_init(pool, r->pool);
-    Event* event = event_create(pool, 0x01, timestamp, uuid);
+    Event_pool pool;
+    pool_init(&pool, r->pool);
+    Event* event = event_create(&pool, 0x01, timestamp, uuid);
 
     /* container /NginxEvent is empty */
 
     /* /NginxEvent/time = Long*/
-    container_add_tag_Long(pool, event->payload, 4, "time", timestamp);
+    container_add_tag_Long(&pool, event->payload, 4, "time", timestamp);
 
     /* /NginxEvent/host = String */
-    if(ngx_http_hercules_event_host(pool, event->payload, r, mcf) == NGX_ERROR){
+    if(ngx_http_hercules_event_host(&pool, event->payload, r, mcf) == NGX_ERROR){
         return NGX_ERROR;
     }
 
     /* /NginxEvent/uri = String */
-    if(ngx_http_hercules_event_uri(pool, event->payload, r, mcf) == NGX_ERROR){
+    if(ngx_http_hercules_event_uri(&pool, event->payload, r, mcf) == NGX_ERROR){
         return NGX_ERROR;
     }
 
     /* /NginxEvent/args */
-    if(ngx_http_hercules_event_args(pool, event->payload, r, mcf) == NGX_ERROR){
+    if(ngx_http_hercules_event_args(&pool, event->payload, r, mcf) == NGX_ERROR){
         return NGX_ERROR;
     }
     
     /* /NginxEvent/status */
-    if(ngx_http_hercules_event_status(pool, event->payload, r, mcf) == NGX_ERROR){
+    if(ngx_http_hercules_event_status(&pool, event->payload, r, mcf) == NGX_ERROR){
         return NGX_ERROR;
     }
 
     /* /NginxEvent/method */
-    if(ngx_http_hercules_event_method(pool, event->payload, r, mcf) == NGX_ERROR){
+    if(ngx_http_hercules_event_method(&pool, event->payload, r, mcf) == NGX_ERROR){
         return NGX_ERROR;
     }
 
     /* /NginxEvent/proto */
-    if(ngx_http_hercules_event_proto(pool, event->payload, r, mcf) == NGX_ERROR){
+    if(ngx_http_hercules_event_proto(&pool, event->payload, r, mcf) == NGX_ERROR){
         return NGX_ERROR;
     }
 
     /* /NginxEvent/req_headers */
-    if(ngx_http_hercules_event_req_headers(pool, event->payload, r, mcf) == NGX_ERROR){
+    if(ngx_http_hercules_event_req_headers(&pool, event->payload, r, mcf) == NGX_ERROR){
         return NGX_ERROR;
     }
 
     /* /NginxEvent/res_headers */
-    if(ngx_http_hercules_event_res_headers(pool, event->payload, r, mcf) == NGX_ERROR){
+    if(ngx_http_hercules_event_res_headers(&pool, event->payload, r, mcf) == NGX_ERROR){
         return NGX_ERROR;
     }
 
     /* /NginxEvent/upstream_status */
     /* /NginxEvent/upstream_addr */
     /* /NginxEvent/counters */
-    if(ngx_http_hercules_event_counters(pool, event->payload, r, mcf) == NGX_ERROR){
+    if(ngx_http_hercules_event_counters(&pool, event->payload, r, mcf) == NGX_ERROR){
         return NGX_ERROR;
     }
 
     /* /NginxEvent/connection */
-    if(ngx_http_hercules_event_connection(pool, event->payload, r, mcf) == NGX_ERROR){
+    if(ngx_http_hercules_event_connection(&pool, event->payload, r, mcf) == NGX_ERROR){
         return NGX_ERROR;
     }
 
     /* /NginxEvent/request_id */
-    if(ngx_http_hercules_event_request_id(pool, event->payload, r, mcf) == NGX_ERROR){
+    if(ngx_http_hercules_event_request_id(&pool, event->payload, r, mcf) == NGX_ERROR){
         return NGX_ERROR;
     }
 
     /* /NginxEvent/node */
-    if(ngx_http_hercules_event_node(pool, event->payload, r, mcf) == NGX_ERROR){
+    if(ngx_http_hercules_event_node(&pool, event->payload, r, mcf) == NGX_ERROR){
         return NGX_ERROR;
     }
 
@@ -118,8 +118,8 @@ static ngx_int_t ngx_http_hercules_handler(ngx_http_request_t *r){
 
     //event_free(event);
 
+    char* stream_name[256];
     ngx_http_variable_value_t* var_hercules_stream = ngx_http_get_indexed_variable(r, mcf->hercules_stream_var_inx);
-    char* stream_name = ngx_palloc(r->pool, sizeof(char) * (var_hercules_stream->len + 1));
     stream_name[var_hercules_stream->len] = '\0';
     ngx_memcpy(stream_name, var_hercules_stream->data, var_hercules_stream->len);
     uint8_t stream_size = var_hercules_stream->len;
