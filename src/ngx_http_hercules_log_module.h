@@ -6,15 +6,18 @@
 #include <ngx_event_openssl.h>
 #include <endian.h>
 #include <libhercules.h>
-/* #if (NGX_LINUX)
-#include <sys/random.h>
-#endif
-*/
+
 #include "ngx_http_hercules_log_struct.h"
 #include "ngx_http_hercules_log_network.h"
 
 #define HERCULES_LOG_BUFFER_SIZE 1024 * 1024 * 32
 #define HERCULES_LOG_BUFFER_FLUSH_TIME 10 * 1000
+/* #define USE_RDSEED */
+
+#ifdef USE_RDSEED
+#include <immintrin.h>
+#endif
+
 
 #define STR_FROM_NGX_STR(variable, pool, value) \
   char* variable = ngx_palloc(pool, sizeof(char) * (value.len + 1)); \

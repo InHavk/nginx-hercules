@@ -570,6 +570,7 @@ static ngx_int_t ngx_http_hercules_event_request_id(Event_pool* pool, List* root
     /* if(getrandom(random_bytes, 16, 0)) { */
     /* centos - kernel 3.10 */
 
+#ifndef USE_RDSEED
     /* simple rand */
     if(1){
         random_bytes[0] = rand() % 256;
@@ -588,6 +589,12 @@ static ngx_int_t ngx_http_hercules_event_request_id(Event_pool* pool, List* root
         random_bytes[13] = rand() % 256;
         random_bytes[14] = rand() % 256;
         random_bytes[15] = rand() % 256;
+#endif
+#ifdef USE_RDSEED
+    if(1){
+        while(_rdseed64_step((uint64_t*) random_bytes) != 1){}
+        while(_rdseed64_step((uint64_t*) (random_bytes+8)) != 1){}
+#endif
 #endif
         ngx_hex_dump(s_request_id, random_bytes, 16);
         container_add_tag_String(pool, root_container, 10, "request_id", (char*) s_request_id);
