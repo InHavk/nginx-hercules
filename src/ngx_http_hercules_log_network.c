@@ -48,9 +48,7 @@ reconnect:
             size_of_bucket = bucket->buffer->end - bucket->buffer->pos;
         }
 
-        if(size_of_bucket == 0){
-            bucket->status = 1;
-        }
+        bucket->status = 1;
         continue;
 error:
         if(*socket_fd >= 0){
@@ -83,6 +81,7 @@ static void ngx_http_hercules_thread_sender_completion(ngx_event_t* ev){
             bucket_new->status = bucket->status;
         } else {
             /* bucket sended or counter more than HERCULES_THREAD_RESEND_COUNTER */
+            ngx_pfree(pool, bucket->buffer->start);
             ngx_pfree(pool, bucket->buffer);
         }
     }
