@@ -10,7 +10,7 @@ static void ngx_http_hercules_thread_sender(void* data, ngx_log_t* log){
     struct timeval send_timeout;
     send_timeout.tv_sec = HERCULES_THREAD_SEND_TIMEOUT;
     send_timeout.tv_usec = 0;
-    static int socket_fd = -1;
+    static __thread int socket_fd = -1;
 
     for(uint8_t i = 0; i < ctx->buckets->nelts; ++i){
         ngx_http_hercules_thread_sender_bucket_ctx_t* bucket = ((ngx_http_hercules_thread_sender_bucket_ctx_t*) ctx->buckets->elts) + i;
