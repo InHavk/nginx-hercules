@@ -10,29 +10,29 @@ static void ngx_http_hercules_thread_sender(void* data, ngx_log_t* log){
     struct timeval send_timeout;
     send_timeout.tv_sec = HERCULES_THREAD_SEND_TIMEOUT;
     send_timeout.tv_usec = 0;
-    int* socket_fd = &ctx->conf->socket;
+    static int socket_fd = -1;
 
     for(uint8_t i = 0; i < ctx->buckets->nelts; ++i){
         ngx_http_hercules_thread_sender_bucket_ctx_t* bucket = ((ngx_http_hercules_thread_sender_bucket_ctx_t*) ctx->buckets->elts) + i;
         uint8_t retries = 0;
         bucket->counter++;
 reconnect:
-        if(*socket_fd < 1){
-            *socket_fd = socket(AF_INET, SOCK_STREAM, 0);
-            if(*socket_fd < 0){
+        if(socket_fd < 1){
+            socket_fd = socket(AF_INET, SOCK_STREAM, 0);
+            if(socket_fd < 0){
                 goto error;
             }
-            if(setsockopt(*socket_fd, SOL_SOCKET, SO_KEEPALIVE, &logic_true, sizeof(logic_true)) < 0){
+            if(setsockopt(socket_fd, SOL_SOCKET, SO_KEEPALIVE, &logic_true, sizeof(logic_true)) < 0){
                 goto error;
             }
-            if(setsockopt(*socket_fd, SOL_SOCKET, SO_SNDTIMEO, &send_timeout, sizeof(send_timeout)) < 0){
+            if(setsockopt(socket_fd, SOL_SOCKET, SO_SNDTIMEO, &send_timeout, sizeof(send_timeout)) < 0){
                 goto error;
             }
             ngx_memzero(&server_addr, sizeof(server_addr));
             server_addr.sin_family = AF_INET;
             server_addr.sin_port = htons(HERCULES_SENDER_POST);
             inet_pton(AF_INET, HERCULES_SENDER_HOST, &server_addr.sin_addr);
-            if(connect(*socket_fd, &server_addr, sizeof(server_addr)) < 0){
+            if(connect(socket_fd, &server_addr, sizeof(server_addr)) < 0){
                 goto error;
             }
         }
@@ -40,7 +40,7 @@ reconnect:
         ssize_t sended_bytes = 0;
         size_t size_of_bucket = bucket->buffer->end - bucket->buffer->pos;
         while(size_of_bucket > 0){
-            sended_bytes = send(*socket_fd, bucket->buffer->pos, size_of_bucket, 0);
+            sended_bytes = send(socket_fd, bucket->buffer->pos, size_of_bucket, 0);
             if(sended_bytes < 0) {
                 goto error;
             }
@@ -51,9 +51,9 @@ reconnect:
         bucket->status = 1;
         continue;
 error:
-        if(*socket_fd >= 0){
-            close(*socket_fd);
-            *socket_fd = -2;
+        if(socket_fd >= 0){
+            close(socket_fd);
+            socket_fd = -2;
         }
         bucket->buffer->pos = bucket->buffer->start;
         if(retries == 0){
