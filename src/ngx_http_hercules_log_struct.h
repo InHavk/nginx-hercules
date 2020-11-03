@@ -7,7 +7,7 @@
 
 typedef struct {
     ngx_buf_t*         buffer;
-    ngx_array_t*       buckets_for_resend;
+    ngx_queue_t*       task_queue;
     ngx_event_t*       event;
     ngx_pool_t*        pool;
     ngx_msec_t         flush;
@@ -18,15 +18,17 @@ typedef struct {
 } ngx_http_hercules_main_conf_t;
 
 typedef struct {
-    ngx_thread_task_t*            task;
+    ngx_thread_task_t*             task;
     ngx_http_hercules_main_conf_t* conf;
-    ngx_array_t*                  buckets;
+    ngx_buf_t*                     buffer;
+    uint8_t                        counter;
+    uint8_t                        status;
 } ngx_http_hercules_thread_sender_ctx_t;
 
 typedef struct {
     ngx_buf_t*         buffer;
     uint8_t            counter;
-    uint8_t            status;
-} ngx_http_hercules_thread_sender_bucket_ctx_t;
+    ngx_queue_t        queue;
+} ngx_http_hercules_thread_queue_task_t;
 
 #endif

@@ -185,6 +185,7 @@ static void* ngx_http_hercules_create_conf(ngx_conf_t* cf){
 
 #ifdef THREAD_SENDER
     mcf->buckets_for_resend = NULL;
+    mcf->task_queue = ngx_palloc(cf->pool, sizeof(ngx_queue_t))
     mcf->socket = -1;
     ngx_str_t hercules_thread_pool_name = ngx_string(HERCULES_THREAD_POOL_NAME);
     mcf->thread_pool = ngx_thread_pool_add(cf, &hercules_thread_pool_name);
@@ -204,6 +205,10 @@ static ngx_int_t ngx_http_hercules_postconf(ngx_conf_t *cf){
     mcf->node_var_inx = ngx_http_get_variable_index(cf, &s_node_name);
     ngx_str_t s_hercules_stream = ngx_string("hercules_stream");
     mcf->hercules_stream_var_inx = ngx_http_get_variable_index(cf, &s_hercules_stream);
+
+#ifdef THREAD_SENDER
+    ngx_queue_init(mcf->task_queue);
+#endif
 
     h = ngx_array_push(&cmcf->phases[NGX_HTTP_LOG_PHASE].handlers);
     if (h == NULL) {
