@@ -99,7 +99,7 @@ static void ngx_http_hercules_send_metrics(ngx_http_hercules_main_conf_t* conf, 
 
     /* copy buffer */
     size_t buffer_size = conf->buffer->pos - conf->buffer->start;
-    if(buffer_size == 0){
+    if(buffer_size > 0){
         buffer = ngx_create_temp_buf(pool, buffer_size);
         if(buffer == NULL){
             return;
@@ -123,7 +123,6 @@ static void ngx_http_hercules_send_metrics(ngx_http_hercules_main_conf_t* conf, 
     ngx_queue_t* current_q;
     ngx_http_hercules_thread_queue_task_t* q_task;
     while(q != ngx_queue_sentinel(task_queue)){
-        q_task = ngx_queue_data(q, ngx_http_hercules_thread_queue_task_t, queue);
         /* create task and load task context */
         if(!direct){
             task = ngx_thread_task_alloc(pool, sizeof(ngx_http_hercules_thread_sender_ctx_t));
@@ -137,6 +136,10 @@ static void ngx_http_hercules_send_metrics(ngx_http_hercules_main_conf_t* conf, 
             }
             task = NULL;
             ctx = ngx_palloc(pool, sizeof(ngx_http_hercules_thread_sender_ctx_t));
+        }
+        q_task = ngx_queue_data(q, ngx_http_hercules_thread_queue_task_t, queue);
+        if(q_task == NULL){
+            return;
         }
 
         ctx->conf = conf;
