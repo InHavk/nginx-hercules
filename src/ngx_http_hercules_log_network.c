@@ -11,27 +11,27 @@ static void ngx_http_hercules_thread_sender(void* data, ngx_log_t* log){
     struct timeval send_timeout;
     send_timeout.tv_sec = HERCULES_THREAD_SEND_TIMEOUT;
     send_timeout.tv_usec = 0;
-    static int socket_fd = -1;
+    int* socket_fd = &ctx->socket;
 
     uint8_t retries = 0;
     ctx->counter++;
 reconnect:
-    if(socket_fd < 0){
-        socket_fd = socket(AF_INET, SOCK_STREAM, 0);
-        if(socket_fd < 0){
+    if(*socket_fd < 0){
+        *socket_fd = socket(AF_INET, SOCK_STREAM, 0);
+        if(*socket_fd < 0){
             goto error;
         }
-        if(setsockopt(socket_fd, SOL_SOCKET, SO_KEEPALIVE, &logic_true, sizeof(logic_true)) < 0){
+        if(setsockopt(*socket_fd, SOL_SOCKET, SO_KEEPALIVE, &logic_true, sizeof(logic_true)) < 0){
             goto error;
         }
-        if(setsockopt(socket_fd, SOL_SOCKET, SO_SNDTIMEO, &send_timeout, sizeof(send_timeout)) < 0){
+        if(setsockopt(*socket_fd, SOL_SOCKET, SO_SNDTIMEO, &send_timeout, sizeof(send_timeout)) < 0){
             goto error;
         }
         ngx_memzero(&server_addr, sizeof(server_addr));
         server_addr.sin_family = AF_INET;
         server_addr.sin_port = htons(HERCULES_SENDER_POST);
         inet_pton(AF_INET, HERCULES_SENDER_HOST, &server_addr.sin_addr);
-        if(connect(socket_fd, &server_addr, sizeof(server_addr)) < 0){
+        if(connect(*socket_fd, &server_addr, sizeof(server_addr)) < 0){
             goto error;
         }
     }
@@ -39,7 +39,7 @@ reconnect:
     ssize_t sended_bytes = 0;
     buffer->pos = buffer->start;
     for(size_t size_of_bucket = buffer->end - buffer->pos; size_of_bucket > 0; size_of_bucket = buffer->end - buffer->pos){
-        sended_bytes = send(socket_fd, buffer->pos, size_of_bucket, 0);
+        sended_bytes = send(*socket_fd, buffer->pos, size_of_bucket, 0);
         if(sended_bytes < 0) {
             goto error;
         }
@@ -49,9 +49,9 @@ reconnect:
     ctx->status = 1;
     return;
 error:
-    if(socket_fd > 0){
-        close(socket_fd);
-        socket_fd = -2;
+    if(*socket_fd > 0){
+        close(*socket_fd);
+        *socket_fd = -2;
     }
     if(retries == 0){
         retries++;
@@ -80,6 +80,10 @@ static void ngx_http_hercules_thread_sender_completion(ngx_event_t* ev){
         ngx_pfree(pool, ctx->buffer->start);
         ngx_pfree(pool, ctx->buffer);
     }
+
+    ngx_http_hercules_thread_queue_socket_t* s = ngx_palloc(conf->pool, sizeof(ngx_http_hercules_thread_queue_socket_t));
+    s->socket = ctx->socket;
+    ngx_queue_insert_head(conf->sockets, s);
 
     ngx_pfree(pool, task);
     if(ngx_queue_head(task_queue) != ngx_queue_sentinel(task_queue) && !event->timer_set){
@@ -122,7 +126,16 @@ static void ngx_http_hercules_send_metrics(ngx_http_hercules_main_conf_t* conf, 
     ngx_queue_t* q = ngx_queue_head(task_queue);
     ngx_queue_t* current_q;
     ngx_http_hercules_thread_queue_task_t* q_task;
+    ngx_http_hercules_thread_queue_socket_t* socket;
     while(q != ngx_queue_sentinel(task_queue)){
+        /* get socket or break */
+        ngx_queue_t* s = ngx_queue_head(conf->sockets);
+        if(s == ngx_queue_sentinel(conf->sockets)){
+            break;
+        }
+
+        socket = ngx_queue_data(s, ngx_http_hercules_thread_queue_socket_t, queue);
+
         /* create task and load task context */
         if(!direct){
             task = ngx_thread_task_alloc(pool, sizeof(ngx_http_hercules_thread_sender_ctx_t));
@@ -138,15 +151,13 @@ static void ngx_http_hercules_send_metrics(ngx_http_hercules_main_conf_t* conf, 
             ctx = ngx_palloc(pool, sizeof(ngx_http_hercules_thread_sender_ctx_t));
         }
         q_task = ngx_queue_data(q, ngx_http_hercules_thread_queue_task_t, queue);
-        if(q_task == NULL){
-            return;
-        }
 
         ctx->conf = conf;
         ctx->task = task;
         ctx->status = 0;
         ctx->buffer = q_task->buffer;
         ctx->counter = q_task->counter;
+        ctx->socket = socket->socket;
 
         /* set task handlers and push it into thread pool */
         if(!direct){
@@ -162,6 +173,8 @@ static void ngx_http_hercules_send_metrics(ngx_http_hercules_main_conf_t* conf, 
         q = ngx_queue_next(current_q);
         ngx_queue_remove(q);
         ngx_pfree(pool, q_task);
+        ngx_queue_remove(s);
+        ngx_pfree(pool, socket);
     }
     #endif
 

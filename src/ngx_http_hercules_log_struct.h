@@ -10,9 +10,9 @@ typedef struct {
     ngx_queue_t*       task_queue;
     ngx_event_t*       event;
     ngx_pool_t*        pool;
-    ngx_msec_t         flush;
-    int                socket;
+    ngx_queue_t*       sockets;
     ngx_thread_pool_t* thread_pool;
+    ngx_msec_t         flush;
     ngx_int_t          node_var_inx;
     ngx_int_t          hercules_stream_var_inx;
 } ngx_http_hercules_main_conf_t;
@@ -23,6 +23,7 @@ typedef struct {
     ngx_buf_t*                     buffer;
     uint8_t                        counter;
     uint8_t                        status;
+    int                            socket;
 } ngx_http_hercules_thread_sender_ctx_t;
 
 typedef struct {
@@ -30,5 +31,10 @@ typedef struct {
     uint8_t            counter;
     ngx_queue_t        queue;
 } ngx_http_hercules_thread_queue_task_t;
+
+typedef struct {
+    int                socket;
+    ngx_queue_t        queue;
+} ngx_http_hercules_thread_queue_socket_t;
 
 #endif
