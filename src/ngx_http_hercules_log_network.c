@@ -83,7 +83,7 @@ static void ngx_http_hercules_thread_sender_completion(ngx_event_t* ev){
 
     ngx_http_hercules_thread_queue_socket_t* s = ngx_palloc(conf->pool, sizeof(ngx_http_hercules_thread_queue_socket_t));
     s->socket = ctx->socket;
-    ngx_queue_insert_head(conf->sockets, s);
+    ngx_queue_insert_head(conf->sockets, &s->queue);
 
     ngx_pfree(pool, task);
     if(ngx_queue_head(task_queue) != ngx_queue_sentinel(task_queue) && !event->timer_set){
