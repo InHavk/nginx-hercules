@@ -82,7 +82,6 @@ static void ngx_http_hercules_thread_sender_completion(ngx_event_t* ev){
     }
 
     ngx_pfree(pool, task);
-    ngx_queue_head(task_queue);
     if(ngx_queue_head(task_queue) != ngx_queue_sentinel(task_queue) && !event->timer_set){
         ngx_event_add_timer(event, conf->flush);
     }
