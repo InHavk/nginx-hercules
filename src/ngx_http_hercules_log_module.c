@@ -126,10 +126,6 @@ static ngx_int_t ngx_http_hercules_handler(ngx_http_request_t *r){
 
     size_t message_length = sizeof(uint32_t) + sizeof(uint8_t) + event_binary->size + stream_size;
     uint32_t be_event_size = htobe32((uint32_t) event_binary->size);
-
-    if(mcf->buffer == NULL){
-        mcf->buffer = ngx_create_temp_buf(mcf->pool, HERCULES_LOG_BUFFER_SIZE);
-    }
     
     ngx_log_error(NGX_LOG_INFO,r->connection->log, 0,
                    "buffer size: %d", mcf->buffer->end - mcf->buffer->pos);
@@ -169,8 +165,6 @@ static void* ngx_http_hercules_create_conf(ngx_conf_t* cf){
         return NULL;
     }
 
-    mcf->buffer = NULL;
-
     mcf->flush = HERCULES_LOG_BUFFER_FLUSH_TIME;
     mcf->event = ngx_pcalloc(cf->pool, sizeof(ngx_event_t));
     if(mcf->event == NULL){
@@ -183,10 +177,18 @@ static void* ngx_http_hercules_create_conf(ngx_conf_t* cf){
 
     mcf->pool = cf->pool;
 
+    mcf->buffer = ngx_create_temp_buf(cf->pool, HERCULES_LOG_BUFFER_SIZE);
 #ifdef THREAD_SENDER
     mcf->task_queue = ngx_palloc(cf->pool, sizeof(ngx_queue_t));
     mcf->sockets = ngx_palloc(cf->pool, sizeof(ngx_queue_t));
     ngx_str_t hercules_thread_pool_name = ngx_string(HERCULES_THREAD_POOL_NAME);
+    ngx_queue_init(mcf->task_queue);
+    ngx_queue_init(mcf->sockets);
+    for(uint8_t i = 0; i < HERCULES_LOG_MAX_SOCKET_SIZE; ++i){
+        ngx_http_hercules_thread_queue_socket_t* s = ngx_palloc(mcf->pool, sizeof(ngx_http_hercules_thread_queue_socket_t));
+        s->socket = -1;
+        ngx_queue_insert_tail(mcf->sockets, &s->queue);
+    }
     mcf->thread_pool = ngx_thread_pool_add(cf, &hercules_thread_pool_name);
 #endif
     return mcf;
@@ -206,13 +208,6 @@ static ngx_int_t ngx_http_hercules_postconf(ngx_conf_t *cf){
     mcf->hercules_stream_var_inx = ngx_http_get_variable_index(cf, &s_hercules_stream);
 
 #ifdef THREAD_SENDER
-    ngx_queue_init(mcf->task_queue);
-    ngx_queue_init(mcf->sockets);
-    for(uint8_t i = 0; i < HERCULES_LOG_MAX_SOCKET_SIZE; ++i){
-        ngx_http_hercules_thread_queue_socket_t* s = ngx_palloc(mcf->pool, sizeof(ngx_http_hercules_thread_queue_socket_t));
-        s->socket = -1;
-        ngx_queue_insert_tail(mcf->sockets, &s->queue);
-    }
 #endif
 
     h = ngx_array_push(&cmcf->phases[NGX_HTTP_LOG_PHASE].handlers);
