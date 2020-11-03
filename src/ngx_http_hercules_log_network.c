@@ -67,7 +67,6 @@ static void ngx_http_hercules_thread_sender_completion(ngx_event_t* ev){
     ngx_thread_task_t* task = ctx->task;
     ngx_queue_t* task_queue = conf->task_queue;
     ngx_event_t* event = conf->event;
-    ngx_msec_t* flush = &conf->flush;
 
     if(ctx->status == 0 && ctx->counter < HERCULES_THREAD_RESEND_COUNTER){
         ngx_http_hercules_thread_queue_task_t* last_task = ngx_palloc(pool, sizeof(ngx_http_hercules_thread_queue_task_t));
@@ -83,9 +82,9 @@ static void ngx_http_hercules_thread_sender_completion(ngx_event_t* ev){
     }
 
     ngx_pfree(pool, task);
-    ngx_queue_head(task_queue)
+    ngx_queue_head(task_queue);
     if(ngx_queue_head(task_queue) != ngx_queue_sentinel(task_queue) && !event->timer_set){
-        ngx_event_add_timer(event, *flush);
+        ngx_event_add_timer(event, conf->flush);
     }
     
 }

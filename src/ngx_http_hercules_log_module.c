@@ -184,8 +184,7 @@ static void* ngx_http_hercules_create_conf(ngx_conf_t* cf){
     mcf->pool = cf->pool;
 
 #ifdef THREAD_SENDER
-    mcf->buckets_for_resend = NULL;
-    mcf->task_queue = ngx_palloc(cf->pool, sizeof(ngx_queue_t))
+    mcf->task_queue = ngx_palloc(cf->pool, sizeof(ngx_queue_t));
     mcf->socket = -1;
     ngx_str_t hercules_thread_pool_name = ngx_string(HERCULES_THREAD_POOL_NAME);
     mcf->thread_pool = ngx_thread_pool_add(cf, &hercules_thread_pool_name);
