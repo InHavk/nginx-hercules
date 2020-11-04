@@ -174,7 +174,7 @@ static void ngx_http_hercules_send_metrics(ngx_http_hercules_main_conf_t* conf, 
 
         current_q = q;
         q = ngx_queue_next(current_q);
-        ngx_queue_remove(q);
+        ngx_queue_remove(current_q);
         ngx_pfree(pool, q_task);
         ngx_queue_remove(s);
         ngx_pfree(pool, socket);
