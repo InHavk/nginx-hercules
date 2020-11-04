@@ -5,6 +5,7 @@
 #include <ngx_http.h>
 #include <ngx_thread_pool.h>
 #include <pthread.h>
+#include <unistd.h>
 #include "ngx_http_hercules_log_struct.h"
 
 #define THREAD_SENDER

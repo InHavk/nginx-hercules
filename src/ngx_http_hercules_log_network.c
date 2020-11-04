@@ -36,6 +36,8 @@ reconnect:
         }
     }
 
+    sleep(11);
+
     ssize_t sended_bytes = 0;
     buffer->pos = buffer->start;
     for(size_t size_of_bucket = buffer->end - buffer->pos; size_of_bucket > 0; size_of_bucket = buffer->end - buffer->pos){
