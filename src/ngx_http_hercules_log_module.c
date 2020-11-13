@@ -126,7 +126,7 @@ static ngx_int_t ngx_http_hercules_handler(ngx_http_request_t *r){
     uint8_t stream_size = var_hercules_stream->len;
     */
 
-    size_t message_length = sizeof(uint32_t) + sizeof(uint8_t) + event_binary->size + stream_size;
+    size_t message_length = sizeof(uint32_t) + event_binary->size;
     uint32_t be_event_size = htobe32((uint32_t) event_binary->size);
     
     if((size_t) (mcf->buffer->end - mcf->buffer->pos) < message_length){
