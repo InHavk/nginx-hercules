@@ -122,7 +122,7 @@ static void ngx_http_hercules_send_metrics(ngx_http_hercules_main_conf_t* conf, 
         }
         last_task->buffer = buffer;
         last_task->counter = 0;
-        ngx_queue_insert_tail(task_queue, &last_task->queue);
+        ngx_queue_insert_head(task_queue, &last_task->queue);
     }
     
     /* create thread tasks for all values in task_queue */
