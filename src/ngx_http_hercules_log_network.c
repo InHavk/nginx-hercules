@@ -27,6 +27,9 @@ reconnect:
         if(setsockopt(*socket_fd, SOL_SOCKET, SO_SNDTIMEO, &send_timeout, sizeof(send_timeout)) < 0){
             goto error;
         }
+        if(setsockopt(*socket_fd, SOL_SOCKET, SO_RCVTIMEO, &send_timeout, sizeof(send_timeout)) < 0){
+            goto error;
+        }
         ngx_memzero(&server_addr, sizeof(server_addr));
         server_addr.sin_family = AF_INET;
         server_addr.sin_port = htons(HERCULES_SENDER_POST);
@@ -37,10 +40,19 @@ reconnect:
     }
 
     ssize_t sended_bytes = 0;
+    ssize_t received_bytes = 0;
+    char return_code[4] = {0x00, 0x00, 0x00, 0x00};
     buffer->pos = buffer->start;
     for(size_t size_of_bucket = buffer->end - buffer->pos; size_of_bucket > 0; size_of_bucket = buffer->end - buffer->pos){
         sended_bytes = send(*socket_fd, buffer->pos, size_of_bucket, 0);
         if(sended_bytes < 0) {
+            goto error;
+        }
+        received_bytes = recv(*socket_fd, return_code, 4, 0);
+        if (received_bytes < 0) {
+            goto error;
+        }
+        if (return_code[0] != 0xFF || return_code[1] != 0x00 || return_code[2] != 0xFF || return_code[3] != 0x00){
             goto error;
         }
         buffer->pos += sended_bytes;
