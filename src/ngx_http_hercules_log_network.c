@@ -41,7 +41,7 @@ reconnect:
 
     ssize_t sended_bytes = 0;
     ssize_t received_bytes = 0;
-    int8_t return_code[4] = {0x00, 0x00, 0x00, 0x00};
+    uint8_t return_code[4] = {0x00, 0x00, 0x00, 0x00};
     buffer->pos = buffer->start;
     for(size_t size_of_bucket = buffer->end - buffer->pos; size_of_bucket > 0; size_of_bucket = buffer->end - buffer->pos){
         sended_bytes = send(*socket_fd, buffer->pos, size_of_bucket, 0);
@@ -52,7 +52,7 @@ reconnect:
         if (received_bytes < 0) {
             goto error;
         }
-        if (return_code[0] != 0xFF || return_code[1] != 0x00 || return_code[2] != 0xFF || return_code[3] != 0x00){
+        if (return_code[0] != (uint8_t) 0xFF || return_code[1] != (uint8_t) 0x00 || return_code[2] != (uint8_t) 0xFF || return_code[3] != (uint8_t) 0x00){
             goto error;
         }
         buffer->pos += sended_bytes;
