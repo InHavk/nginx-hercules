@@ -41,14 +41,14 @@ reconnect:
 
     ssize_t sended_bytes = 0;
     ssize_t received_bytes = 0;
-    int return_code[4] = {0x00, 0x00, 0x00, 0x00};
+    int8_t return_code[4] = {0x00, 0x00, 0x00, 0x00};
     buffer->pos = buffer->start;
     for(size_t size_of_bucket = buffer->end - buffer->pos; size_of_bucket > 0; size_of_bucket = buffer->end - buffer->pos){
         sended_bytes = send(*socket_fd, buffer->pos, size_of_bucket, 0);
         if(sended_bytes < 0) {
             goto error;
         }
-        received_bytes = recv(*socket_fd, return_code, 4, 0);
+        received_bytes = recv(*socket_fd, return_code, 4, MSG_WAITALL);
         if (received_bytes < 0) {
             goto error;
         }
