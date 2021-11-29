@@ -24,8 +24,8 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-static void ngx_http_hercules_thread_sender(void* data, ngx_log_t* log);
-static void ngx_http_hercules_thread_sender_completion(ngx_event_t* ev);
+void ngx_http_hercules_thread_sender(void* data, ngx_log_t* log);
+void ngx_http_hercules_thread_sender_completion(ngx_event_t* ev);
 void ngx_http_hercules_send_metrics(ngx_http_hercules_main_conf_t* conf, u_int8_t direct);
 #endif
 

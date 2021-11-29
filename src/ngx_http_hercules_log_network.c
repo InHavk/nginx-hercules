@@ -1,7 +1,7 @@
 #include "ngx_http_hercules_log_network.h"
 
 #ifdef THREAD_SENDER
-static void ngx_http_hercules_thread_sender(void* data, ngx_log_t* log){
+void ngx_http_hercules_thread_sender(void* data, ngx_log_t* log){
     /* executed in thread */
     ngx_http_hercules_thread_sender_ctx_t* ctx = data;
     ngx_buf_t* buffer = ctx->buffer;
@@ -41,21 +41,24 @@ reconnect:
 
     ssize_t sended_bytes = 0;
     ssize_t received_bytes = 0;
-    uint8_t return_code[4] = {0x00, 0x00, 0x00, 0x00};
+    uint64_t full_size_be = *(u_int64_t*) buffer->start;
+    uint64_t return_code_be = 0;
     buffer->pos = buffer->start;
     for(size_t size_of_bucket = buffer->end - buffer->pos; size_of_bucket > 0; size_of_bucket = buffer->end - buffer->pos){
         sended_bytes = send(*socket_fd, buffer->pos, size_of_bucket, 0);
         if(sended_bytes < 0) {
             goto error;
         }
-        received_bytes = recv(*socket_fd, return_code, 4, MSG_WAITALL);
-        if (received_bytes < 0) {
-            goto error;
-        }
-        if (return_code[0] != (uint8_t) 0xFF || return_code[1] != (uint8_t) 0x00 || return_code[2] != (uint8_t) 0xFF || return_code[3] != (uint8_t) 0x00){
-            goto error;
-        }
         buffer->pos += sended_bytes;
+        if(buffer->pos == buffer->end){
+            received_bytes = recv(*socket_fd, return_code_be, 8, MSG_WAITALL);
+            if (received_bytes < 0) {
+                goto error;
+            }
+            if(return_code_be != full_size_be){
+                goto error;
+            }
+        }
     }
 
     ctx->status = 1;
@@ -72,7 +75,7 @@ error:
     return;
 }
 
-static void ngx_http_hercules_thread_sender_completion(ngx_event_t* ev){
+void ngx_http_hercules_thread_sender_completion(ngx_event_t* ev){
     ngx_http_hercules_thread_sender_ctx_t* ctx = ev->data;
     ngx_http_hercules_main_conf_t* conf = ctx->conf;
     ngx_pool_t* pool = conf->pool;
@@ -118,12 +121,15 @@ void ngx_http_hercules_send_metrics(ngx_http_hercules_main_conf_t* conf, u_int8_
 
     /* copy buffer */
     size_t buffer_size = conf->buffer->pos - conf->buffer->start;
+    uint64_t buffer_size_64 = htobe64(buffer_size);
+    size_t size_of_buffer_size_64 = sizeof(uint64_t);
     if(buffer_size > 0){
-        buffer = ngx_create_temp_buf(pool, buffer_size);
+        buffer = ngx_create_temp_buf(pool, buffer_size + size_of_buffer_size_64);
         if(buffer == NULL){
             return;
         }
-        ngx_memcpy(buffer->start, conf->buffer->start, buffer_size);
+        ngx_memcpy(buffer->start + size_of_buffer_size_64, conf->buffer->start, buffer_size);
+        ngx_memcpy(buffer->start, &buffer_size_64, size_of_buffer_size_64);
 
         /* reset buffer */
         conf->buffer->pos = conf->buffer->start;
