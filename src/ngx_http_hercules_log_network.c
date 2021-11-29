@@ -11,13 +11,13 @@ static void ngx_http_hercules_thread_sender(void* data, ngx_log_t* log){
     struct timeval send_timeout;
     send_timeout.tv_sec = HERCULES_THREAD_SEND_TIMEOUT;
     send_timeout.tv_usec = 0;
-    int* socket_fd = &ctx->socket;
+    ngx_socket_t* socket_fd = &ctx->socket;
 
     uint8_t retries = 0;
     ctx->counter++;
 reconnect:
     if(*socket_fd < 0){
-        *socket_fd = socket(AF_INET, SOCK_STREAM, 0);
+        *socket_fd = ngx_socket(AF_INET, SOCK_STREAM, 0);
         if(*socket_fd < 0){
             goto error;
         }
@@ -107,7 +107,7 @@ static void ngx_http_hercules_thread_sender_completion(ngx_event_t* ev){
     
 }
 
-static void ngx_http_hercules_send_metrics(ngx_http_hercules_main_conf_t* conf, u_int8_t direct){
+void ngx_http_hercules_send_metrics(ngx_http_hercules_main_conf_t* conf, u_int8_t direct){
     #ifdef THREAD_SENDER
     ngx_thread_task_t* task;
     ngx_http_hercules_thread_sender_ctx_t* ctx;
@@ -192,13 +192,9 @@ static void ngx_http_hercules_send_metrics(ngx_http_hercules_main_conf_t* conf, 
         ngx_pfree(pool, socket);
     }
     #endif
-
-    #ifdef EVENT_LOOP_SENDER
-    #endif
 }
 
 #endif
 
 #ifdef EVENT_LOOP_SENDER
-
 #endif

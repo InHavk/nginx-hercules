@@ -26,11 +26,15 @@
 
 static void ngx_http_hercules_thread_sender(void* data, ngx_log_t* log);
 static void ngx_http_hercules_thread_sender_completion(ngx_event_t* ev);
-static void ngx_http_hercules_send_metrics(ngx_http_hercules_main_conf_t* conf, u_int8_t direct);
+void ngx_http_hercules_send_metrics(ngx_http_hercules_main_conf_t* conf, u_int8_t direct);
 #endif
 
 #ifdef EVENT_LOOP_SENDER
-
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+static inline void ngx_http_hercules_destroy_connection(ngx_http_hercules_main_conf_t* conf, ngx_connection_t* connection);
+void ngx_http_hercules_send_metrics(ngx_http_hercules_main_conf_t* conf);
 #endif
 
 #endif

@@ -206,6 +206,8 @@ static ngx_int_t ngx_http_hercules_postconf(ngx_conf_t *cf){
     ngx_str_t s_hercules_stream = ngx_string("hercules_stream");
     mcf->hercules_stream_var_inx = ngx_http_get_variable_index(cf, &s_hercules_stream);
 
+    mcf->log = cf->log;
+
 #ifdef THREAD_SENDER
 #endif
 
@@ -232,7 +234,9 @@ static void ngx_http_hercules_exit_process(ngx_cycle_t *cycle){
 }
 
 static void ngx_http_hercules_flush_buffer(ngx_http_hercules_main_conf_t* conf, ngx_log_t* log){
+    #ifdef THREAD_SENDER
     ngx_http_hercules_send_metrics(conf, 0);
+    #endif
 }
 
 static void ngx_http_hercules_flush_handler(ngx_event_t* ev){
@@ -614,5 +618,3 @@ static ngx_int_t ngx_http_hercules_event_node(Event_pool* pool, List* root_conta
     container_add_tag_String(pool, root_container, 4, "node", s_node_name);
     return NGX_OK;
 }
-
-#include "ngx_http_hercules_log_network.c"
