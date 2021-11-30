@@ -16,7 +16,6 @@ typedef struct {
     ngx_thread_pool_t* thread_pool;
     ngx_msec_t         flush;
     ngx_int_t          node_var_inx;
-    ngx_int_t          hercules_stream_var_inx;
 } ngx_http_hercules_main_conf_t;
 
 typedef struct {

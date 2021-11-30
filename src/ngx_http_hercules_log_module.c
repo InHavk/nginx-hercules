@@ -136,14 +136,6 @@ static ngx_int_t ngx_http_hercules_handler(ngx_http_request_t *r){
 
     //event_free(event);
 
-    /*
-    char* stream_name[256];
-    ngx_http_variable_value_t* var_hercules_stream = ngx_http_get_indexed_variable(r, mcf->hercules_stream_var_inx);
-    stream_name[var_hercules_stream->len] = '\0';
-    ngx_memcpy(stream_name, var_hercules_stream->data, var_hercules_stream->len);
-    uint8_t stream_size = var_hercules_stream->len;
-    */
-
     size_t message_length = sizeof(uint32_t) + event_binary->size;
     uint32_t be_event_size = htobe32((uint32_t) event_binary->size);
     
@@ -159,11 +151,8 @@ static ngx_int_t ngx_http_hercules_handler(ngx_http_request_t *r){
     *pos++ = (uint8_t) ((be_event_size & 0x0000FF00) >> 8);
     *pos++ = (uint8_t) ((be_event_size & 0x00FF0000) >> 16);
     *pos++ = (uint8_t) ((be_event_size & 0xFF000000) >> 24);
-    /**pos++ = stream_size;*/
     ngx_memcpy(pos, event_binary->value, event_binary->size);
     pos += event_binary->size;
-    /*ngx_memcpy(pos, stream_name, stream_size);
-    pos += stream_size;*/
     mcf->buffer->pos = pos;
 
     mcf->event->log = ngx_cycle->log;
@@ -221,8 +210,6 @@ static ngx_int_t ngx_http_hercules_postconf(ngx_conf_t *cf){
 
     ngx_str_t s_node_name = ngx_string("node_name");
     mcf->node_var_inx = ngx_http_get_variable_index(cf, &s_node_name);
-    ngx_str_t s_hercules_stream = ngx_string("hercules_stream");
-    mcf->hercules_stream_var_inx = ngx_http_get_variable_index(cf, &s_hercules_stream);
 
     mcf->log = cf->log;
 
