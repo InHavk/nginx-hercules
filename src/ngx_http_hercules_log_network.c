@@ -51,7 +51,7 @@ reconnect:
         }
         buffer->pos += sended_bytes;
         if(buffer->pos == buffer->end){
-            received_bytes = recv(*socket_fd, return_code_be, 8, MSG_WAITALL);
+            received_bytes = recv(*socket_fd, &return_code_be, 8, MSG_WAITALL);
             if (received_bytes < 0) {
                 goto error;
             }

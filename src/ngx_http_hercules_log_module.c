@@ -1,5 +1,23 @@
 #include "ngx_http_hercules_log_module.h"
 
+static ngx_int_t ngx_http_hercules_handler(ngx_http_request_t* r);
+static ngx_int_t ngx_http_hercules_postconf(ngx_conf_t* cf);
+static void ngx_http_hercules_exit_process(ngx_cycle_t* cycle);
+static void* ngx_http_hercules_create_conf(ngx_conf_t* cf);
+static void ngx_http_hercules_flush_handler(ngx_event_t* ev);
+static void ngx_http_hercules_flush_buffer(ngx_http_hercules_main_conf_t* conf, ngx_log_t* log);
+static ngx_int_t ngx_http_hercules_event_host(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf);
+static ngx_int_t ngx_http_hercules_event_uri(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf);
+static ngx_int_t ngx_http_hercules_event_args(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf);
+static ngx_int_t ngx_http_hercules_event_status(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf);
+static ngx_int_t ngx_http_hercules_event_method(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf);
+static ngx_int_t ngx_http_hercules_event_proto(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf);
+static ngx_int_t ngx_http_hercules_event_req_headers(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf);
+static ngx_int_t ngx_http_hercules_event_res_headers(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf);
+static ngx_int_t ngx_http_hercules_event_counters(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf);
+static ngx_int_t ngx_http_hercules_event_connection(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf);
+static ngx_int_t ngx_http_hercules_event_request_id(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf);
+static ngx_int_t ngx_http_hercules_event_node(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf);
 
 static ngx_http_module_t  ngx_http_hercules_module_ctx = {
     NULL,                                  /* preconfiguration */
