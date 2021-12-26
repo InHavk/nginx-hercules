@@ -6,18 +6,18 @@ static void ngx_http_hercules_exit_process(ngx_cycle_t* cycle);
 static void* ngx_http_hercules_create_conf(ngx_conf_t* cf);
 static void ngx_http_hercules_flush_handler(ngx_event_t* ev);
 static void ngx_http_hercules_flush_buffer(ngx_http_hercules_main_conf_t* conf, ngx_log_t* log);
-static ngx_int_t ngx_http_hercules_event_host(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf);
-static ngx_int_t ngx_http_hercules_event_uri(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf);
-static ngx_int_t ngx_http_hercules_event_args(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf);
-static ngx_int_t ngx_http_hercules_event_status(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf);
-static ngx_int_t ngx_http_hercules_event_method(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf);
-static ngx_int_t ngx_http_hercules_event_proto(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf);
-static ngx_int_t ngx_http_hercules_event_req_headers(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf);
-static ngx_int_t ngx_http_hercules_event_res_headers(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf);
-static ngx_int_t ngx_http_hercules_event_counters(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf);
-static ngx_int_t ngx_http_hercules_event_connection(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf);
-static ngx_int_t ngx_http_hercules_event_request_id(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf);
-static ngx_int_t ngx_http_hercules_event_node(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf);
+static inline ngx_int_t ngx_http_hercules_event_host(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf);
+static inline ngx_int_t ngx_http_hercules_event_uri(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf);
+static inline ngx_int_t ngx_http_hercules_event_args(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf);
+static inline ngx_int_t ngx_http_hercules_event_status(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf);
+static inline ngx_int_t ngx_http_hercules_event_method(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf);
+static inline ngx_int_t ngx_http_hercules_event_proto(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf);
+static inline ngx_int_t ngx_http_hercules_event_req_headers(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf);
+static inline ngx_int_t ngx_http_hercules_event_res_headers(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf);
+static inline ngx_int_t ngx_http_hercules_event_counters(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf);
+static inline ngx_int_t ngx_http_hercules_event_connection(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf);
+static inline ngx_int_t ngx_http_hercules_event_request_id(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf);
+static inline ngx_int_t ngx_http_hercules_event_node(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf);
 
 static ngx_http_module_t  ngx_http_hercules_module_ctx = {
     NULL,                                  /* preconfiguration */
@@ -250,7 +250,7 @@ static void ngx_http_hercules_flush_handler(ngx_event_t* ev){
     ngx_http_hercules_flush_buffer(conf, ev->log);
 }
 
-static ngx_int_t ngx_http_hercules_event_host(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf){
+static inline ngx_int_t ngx_http_hercules_event_host(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf){
     if(r->headers_in.host != NULL){
         STR_FROM_NGX_STR(s_host, r->pool, r->headers_in.host->value);
         container_add_tag_String(pool, root_container, 4, "host", s_host);
@@ -260,13 +260,13 @@ static ngx_int_t ngx_http_hercules_event_host(Event_pool* pool, List* root_conta
     return NGX_OK;
 }
 
-static ngx_int_t ngx_http_hercules_event_uri(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf){
+static inline ngx_int_t ngx_http_hercules_event_uri(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf){
     STR_FROM_NGX_STR(s_uri, r->pool, r->uri);
     container_add_tag_String(pool, root_container, 3, "uri", s_uri);
     return NGX_OK;
 }
 
-static ngx_int_t ngx_http_hercules_event_args(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf){
+static inline ngx_int_t ngx_http_hercules_event_args(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf){
     Vector* vector_args = (Vector*) container_add_tag_Vector(pool, root_container, CONTAINER, 4, "args")->value;
     char* key = ngx_palloc(r->pool, sizeof(char) * (r->args.len + 1));
     size_t key_inx = 0;
@@ -316,12 +316,12 @@ static ngx_int_t ngx_http_hercules_event_args(Event_pool* pool, List* root_conta
     return NGX_OK;
 }
 
-static ngx_int_t ngx_http_hercules_event_status(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf){
+static inline ngx_int_t ngx_http_hercules_event_status(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf){
     container_add_tag_Short(pool, root_container, 6, "status", (int16_t) r->headers_out.status);
     return NGX_OK;
 }
 
-static ngx_int_t ngx_http_hercules_event_method(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf){
+static inline ngx_int_t ngx_http_hercules_event_method(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf){
     uint8_t b_method;
     switch(r->method){
         case NGX_HTTP_HEAD:
@@ -378,13 +378,13 @@ static ngx_int_t ngx_http_hercules_event_method(Event_pool* pool, List* root_con
     return NGX_OK;
 }
 
-static ngx_int_t ngx_http_hercules_event_proto(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf){
+static inline ngx_int_t ngx_http_hercules_event_proto(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf){
     STR_FROM_NGX_STR(s_proto, r->pool, r->http_protocol);
     container_add_tag_String(pool, root_container, 5, "proto", s_proto);
     return NGX_OK;
 }
 
-static ngx_int_t ngx_http_hercules_event_req_headers(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf){
+static inline ngx_int_t ngx_http_hercules_event_req_headers(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf){
     Vector* vector_req_headers = (Vector*) container_add_tag_Vector(pool, root_container, CONTAINER, 11, "req_headers")->value;
     if(r->headers_in.headers.nalloc == 0){
         return NGX_OK;
@@ -414,7 +414,7 @@ static ngx_int_t ngx_http_hercules_event_req_headers(Event_pool* pool, List* roo
     return NGX_OK;
 }
 
-static ngx_int_t ngx_http_hercules_event_res_headers(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf){
+static inline ngx_int_t ngx_http_hercules_event_res_headers(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf){
     Vector* vector_res_headers = (Vector*) container_add_tag_Vector(pool, root_container, CONTAINER, 11, "res_headers")->value;
     /* /NginxEvent/res_headers/<content-type> */
     if(r->headers_out.content_type.data != NULL){
@@ -460,7 +460,7 @@ static ngx_int_t ngx_http_hercules_event_res_headers(Event_pool* pool, List* roo
     return NGX_OK;
 }
 
-static ngx_int_t ngx_http_hercules_event_counters(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf){
+static inline ngx_int_t ngx_http_hercules_event_counters(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf){
     /* /NginxEvent/upstream_status */
     Vector* vector_upstream_status = (Vector*) container_add_tag_Vector(pool, root_container, SHORT, 15, "upstream_status")->value;
 
@@ -522,7 +522,7 @@ static ngx_int_t ngx_http_hercules_event_counters(Event_pool* pool, List* root_c
     return NGX_OK;
 }
 
-static ngx_int_t ngx_http_hercules_event_connection(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf){
+static inline ngx_int_t ngx_http_hercules_event_connection(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf){
     List* container_connection = (List*) container_add_tag_Container(pool, root_container, 10, "connection")->value;
 
     /* /NginxEvent/connection/port */
@@ -568,7 +568,7 @@ static ngx_int_t ngx_http_hercules_event_connection(Event_pool* pool, List* root
     return NGX_OK;
 }
 
-static ngx_int_t ngx_http_hercules_event_request_id(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf){
+static inline ngx_int_t ngx_http_hercules_event_request_id(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf){
     u_char random_bytes[16];
     u_char s_request_id[33];
     s_request_id[32] = '\0';
@@ -615,7 +615,7 @@ static ngx_int_t ngx_http_hercules_event_request_id(Event_pool* pool, List* root
     return NGX_OK;
 }
 
-static ngx_int_t ngx_http_hercules_event_node(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf){
+static inline ngx_int_t ngx_http_hercules_event_node(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf){
     ngx_http_variable_value_t* var_node_name = ngx_http_get_indexed_variable(r, mcf->node_var_inx);
     char* s_node_name = ngx_palloc(r->pool, sizeof(char) * (var_node_name->len + 1));
     s_node_name[var_node_name->len] = '\0';
