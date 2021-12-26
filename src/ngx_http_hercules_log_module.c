@@ -53,8 +53,10 @@ static ngx_int_t ngx_http_hercules_handler(ngx_http_request_t *r){
 
     ngx_http_hercules_main_conf_t* mcf = ngx_http_get_module_main_conf(r, ngx_http_hercules_module);
 
-    ngx_log_error(NGX_LOG_INFO,r->connection->log, 0,
-                   "ngx_http_hercules_handler");
+    if(r->connection->local_sockaddr->sa_family == AF_UNIX){
+        /* ignore unix servers */
+        return NGX_OK;
+    }
     
     uint8_t uuid[16];
     generate_uuid_v4(uuid);
