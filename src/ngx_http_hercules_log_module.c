@@ -149,10 +149,7 @@ static ngx_int_t ngx_http_hercules_handler(ngx_http_request_t *r){
     }
 
     u_char* pos = mcf->buffer->pos;
-    *pos++ = (uint8_t) (be_event_size  & 0x000000FF);
-    *pos++ = (uint8_t) ((be_event_size & 0x0000FF00) >> 8);
-    *pos++ = (uint8_t) ((be_event_size & 0x00FF0000) >> 16);
-    *pos++ = (uint8_t) ((be_event_size & 0xFF000000) >> 24);
+    ngx_memcpy(pos, &be_event_size, sizeof(be_event_size));
     ngx_memcpy(pos, event_binary->value, event_binary->size);
     pos += event_binary->size;
     mcf->buffer->pos = pos;
