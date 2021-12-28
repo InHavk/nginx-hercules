@@ -316,7 +316,6 @@ static void ngx_http_hercules_read_handler(ngx_event_t *rev){
         if (rev->timer_set) {
             ngx_del_timer(rev);
         }
-        ngx_handle_read_event(rev, 0);
         return;
     }
 
@@ -360,7 +359,6 @@ static void ngx_http_hercules_read_handler(ngx_event_t *rev){
     return;
 
 error:
-    ngx_handle_read_event(rev, 0);
     ngx_close_connection(c);
     ctx->peer.connection = NULL;
     ngx_http_hercules_error(ctx);
@@ -374,7 +372,6 @@ static void ngx_http_hercules_write_handler(ngx_event_t *wev){
         if (wev->timer_set) {
             ngx_del_timer(wev);
         }
-        ngx_handle_write_event(wev, 0);
         return;
     }
     if (wev->timedout){
@@ -408,7 +405,6 @@ static void ngx_http_hercules_write_handler(ngx_event_t *wev){
 
     return;
 error:
-    ngx_handle_write_event(wev, 0);
     ngx_close_connection(c);
     ctx->peer.connection = NULL;
     ngx_http_hercules_error(ctx);
