@@ -54,6 +54,8 @@ static inline ngx_int_t ngx_http_hercules_initialize_ctx(ngx_http_hercules_main_
         return NGX_ERROR;
     }
     ngx_inet_set_port(ctx->addr->sockaddr, (in_port_t) HERCULES_SENDER_PORT);
+    ngx_str_t host_port = ngx_string(HERCULES_SENDER_HOST ":" "HERCULES_SENDER_PORT");
+    ctx->addr->name = host_port;
     return NGX_OK;
 }
 
