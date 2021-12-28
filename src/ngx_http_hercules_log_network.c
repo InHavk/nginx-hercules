@@ -473,7 +473,6 @@ void ngx_http_hercules_send_on_exit(ngx_http_hercules_main_conf_t* conf){
 
     while(q != ngx_queue_sentinel(ctx->task_queue)){
         ngx_http_hercules_queue_task_t* q_task = ngx_queue_data(q, ngx_http_hercules_queue_task_t, queue);
-        //q_task->chunk->buffer->start
         ssize_t buffer_size = q_task->chunk->buffer->end - q_task->chunk->buffer->start;
         ssize_t sended_bytes = send(socket_fd, q_task->chunk->buffer->start, buffer_size, 0);
         if (sended_bytes != buffer_size){
