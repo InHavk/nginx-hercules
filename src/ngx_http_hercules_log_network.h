@@ -45,6 +45,7 @@ static inline ngx_int_t ngx_http_hercules_initialize_ctx(ngx_http_hercules_main_
     conf->ctx = ctx;
     ctx->pool = conf->pool;
     ctx->log = conf->log;
+    ctx->task_queue = ngx_palloc(ctx->pool, sizeof(ngx_queue_t));
     ngx_queue_init(ctx->task_queue);
     ctx->timeout = HERCULES_SEND_TIMEOUT;
     ctx->addr = ngx_pcalloc(ctx->pool, sizeof(ngx_addr_t));
