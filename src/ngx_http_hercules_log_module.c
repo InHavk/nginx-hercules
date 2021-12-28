@@ -196,6 +196,11 @@ static void* ngx_http_hercules_create_conf(ngx_conf_t* cf){
     }
     mcf->thread_pool = ngx_thread_pool_add(cf, &hercules_thread_pool_name);
 #endif
+#ifdef EVENT_LOOP_SENDER
+    if(ngx_http_hercules_initialize_ctx(mcf) != NGX_OK){
+        return NULL;
+    }
+#endif
     return mcf;
 }
 
@@ -228,12 +233,15 @@ static void ngx_http_hercules_exit_process(ngx_cycle_t *cycle){
     if (ngx_process != NGX_PROCESS_WORKER && ngx_process != NGX_PROCESS_SINGLE){
         return;
     }
-    #ifdef THREAD_SENDER
     ngx_http_hercules_main_conf_t* mcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_hercules_module);
     if(mcf == NULL){
         return;
     }
+    #ifdef THREAD_SENDER
     ngx_http_hercules_send_metrics(mcf, 1);
+    #endif
+    #ifdef EVENT_LOOP_SENDER
+    ngx_http_hercules_send_on_exit(mcf);
     #endif
 }
 
@@ -241,10 +249,12 @@ static void ngx_http_hercules_flush_buffer(ngx_http_hercules_main_conf_t* conf, 
     #ifdef THREAD_SENDER
     ngx_http_hercules_send_metrics(conf, 0);
     #endif
+    #ifdef EVENT_LOOP_SENDER
+    ngx_http_hercules_send_metrics(conf);
+    #endif
 }
 
 static void ngx_http_hercules_flush_handler(ngx_event_t* ev){
-    ngx_log_error(NGX_LOG_INFO, ev->log, 0, "flush_handler");
     ngx_http_hercules_main_conf_t* conf = (ngx_http_hercules_main_conf_t*) ev->data;
     ngx_http_hercules_flush_buffer(conf, ev->log);
 }
