@@ -25,6 +25,7 @@ typedef struct ngx_http_hercules_ctx_s {
     ngx_queue_t*                   task_queue;
     ngx_http_hercules_chunk_t*     active_chunk;
     ngx_addr_t*                    addr;
+    ngx_buf_t*                     response;
     ngx_peer_connection_t          peer;
     ngx_int_t                      active_chunk_status;
     ngx_msec_t                     timeout;

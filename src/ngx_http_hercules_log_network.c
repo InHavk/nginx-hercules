@@ -253,6 +253,7 @@ void ngx_http_hercules_send_metrics(ngx_http_hercules_main_conf_t* conf){
 }
 
 static void ngx_http_hercules_send_chunk(ngx_http_hercules_ctx_t* ctx){
+    ngx_int_t rc;
     ngx_pool_t* pool = ctx->pool;
     ngx_queue_t* task_queue = ctx->task_queue;
     ngx_queue_t* q = ngx_queue_head(task_queue);
@@ -270,24 +271,22 @@ static void ngx_http_hercules_send_chunk(ngx_http_hercules_ctx_t* ctx){
     ngx_queue_remove(q);
     ngx_pfree(pool, q_task);
 
-    if(ctx->peer.connection == NULL){
-        ngx_int_t rc = ngx_http_hercules_connect(ctx);
-        if(rc != NGX_OK){
+    if (ctx->peer.connection == NULL){
+        rc = ngx_http_hercules_connect(ctx);
+        if(rc == NGX_BUSY || rc == NGX_DECLINED){
             goto error;
         }
     }
-    ctx->peer.connection->data = ctx;
-    ctx->peer.connection->pool = pool;
-    ctx->peer.connection->read->handler = ngx_http_hercules_read_handler;
-    ctx->peer.connection->write->handler = ngx_http_hercules_write_handler;
 
-    if(ctx->timeout){
-        ngx_add_timer(ctx->peer.connection->read, ctx->timeout);
-        ngx_add_timer(ctx->peer.connection->write, ctx->timeout);
+    if (ctx->peer.connection->write->handler != ngx_http_hercules_write_handler){
+        ctx->peer.connection->write->handler = ngx_http_hercules_write_handler;
+        if (ngx_handle_read_event(ctx->peer.connection->read, 0) != NGX_OK) {
+            goto error;
+        }
+        if (ngx_handle_write_event(ctx->peer.connection->write, 0) != NGX_OK) {
+            goto error;
+        }
     }
-
-    ngx_http_hercules_write_handler(ctx->peer.connection->write);
-
     return;
 error:
     ngx_http_hercules_error(ctx);
@@ -305,7 +304,26 @@ static inline ngx_int_t ngx_http_hercules_connect(ngx_http_hercules_ctx_t* ctx){
 
     ngx_int_t rc = ngx_event_connect_peer(&ctx->peer);
 
+    if(rc == NGX_ERROR || rc == NGX_BUSY || rc == NGX_DECLINED){
+        return rc;
+    }
+
+    ctx->peer.connection->data = ctx;
+    ctx->peer.connection->pool = ctx->pool;
+    ctx->peer.connection->read->handler = ngx_http_hercules_read_handler;
+    ctx->peer.connection->write->handler = ngx_http_hercules_write_handler;
+
+    ngx_add_timer(ctx->peer.connection->write, ctx->timeout);
+
+    if(rc == NGX_OK){
+        ngx_http_hercules_write_handler(ctx->peer.connection->write);
+    }
+
     return rc;
+}
+
+static void ngx_http_hercules_dumb_handler(ngx_event_t *ev){
+    return;
 }
 
 static void ngx_http_hercules_read_handler(ngx_event_t *rev){
@@ -331,25 +349,15 @@ static void ngx_http_hercules_read_handler(ngx_event_t *rev){
         goto error;
     }
 
-    ngx_buf_t* response = ngx_create_temp_buf(ctx->pool, HERCULES_SENDER_RESPONSE_SIZE);
-    if(response == NULL){
-        goto error;
-    }
-
-    ssize_t recv_size = ngx_recv(c, response->pos, HERCULES_SENDER_RESPONSE_SIZE);
+    ssize_t recv_size = ngx_recv(c, ctx->response->start, HERCULES_SENDER_RESPONSE_SIZE);
 
     if (recv_size != HERCULES_SENDER_RESPONSE_SIZE){
         goto error;
     }
 
-    if (ngx_memcmp(ctx->active_chunk->buffer->start, response->start, HERCULES_SENDER_RESPONSE_SIZE) != 0){
+    if (ngx_memcmp(ctx->active_chunk->buffer->start, ctx->response->start, HERCULES_SENDER_RESPONSE_SIZE) != 0){
         goto error;
     }
-
-    if (ngx_handle_read_event(rev, 0) != NGX_OK) {
-        goto error;
-    }
-
     ngx_pfree(ctx->pool, ctx->active_chunk->buffer);
     ngx_pfree(ctx->pool, ctx->active_chunk);
     ctx->active_chunk = NULL;
@@ -395,11 +403,14 @@ static void ngx_http_hercules_write_handler(ngx_event_t *wev){
                 ngx_del_timer(wev);
             }
             ctx->active_chunk_status = NGX_HERCULES_CHUNK_ON_READ;
-            ngx_int_t hwe = ngx_handle_write_event(wev, 0);
-            if (hwe != NGX_OK){
-                goto error;
-            }
+            wev->handler = ngx_http_hercules_dumb_handler;
+            ngx_add_timer(ctx->peer.connection->read, ctx->timeout);
             return;
+        }
+
+        ngx_int_t hwe = ngx_handle_write_event(wev, 0);
+        if (hwe != NGX_OK){
+            goto error;
         }
     }
 

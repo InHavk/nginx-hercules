@@ -12,6 +12,7 @@
 
 #define HERCULES_SENDER_HOST "127.0.0.1"
 #define HERCULES_SENDER_PORT 2480
+#define HERCULES_SENDER_HOST_PORT "127.0.0.1:2480"
 #define HERCULES_THREAD_POOL_NAME "hercules"
 #define HERCULES_THREAD_RESEND_COUNTER 3
 #define HERCULES_THREAD_RESEND_BUCKETS_SIZE 8
@@ -45,16 +46,30 @@ static inline ngx_int_t ngx_http_hercules_initialize_ctx(ngx_http_hercules_main_
     conf->ctx = ctx;
     ctx->pool = conf->pool;
     ctx->log = conf->pool->log;
+
     ctx->task_queue = ngx_palloc(ctx->pool, sizeof(ngx_queue_t));
+    if (ctx->task_queue == NULL){
+        return NGX_ERROR;
+    }
     ngx_queue_init(ctx->task_queue);
+
     ctx->timeout = HERCULES_SEND_TIMEOUT;
+
+    ctx->response = ngx_create_temp_buf(ctx->pool, HERCULES_SENDER_RESPONSE_SIZE);
+    if (ctx->response == NULL){
+        return NGX_ERROR;
+    }
+
     ctx->addr = ngx_pcalloc(ctx->pool, sizeof(ngx_addr_t));
+    if (ctx->addr == NULL){
+        return NGX_ERROR;
+    }
     ngx_str_t host = ngx_string(HERCULES_SENDER_HOST);
     if (ngx_parse_addr(ctx->pool, ctx->addr, host.data, host.len) != NGX_OK){
         return NGX_ERROR;
     }
     ngx_inet_set_port(ctx->addr->sockaddr, (in_port_t) HERCULES_SENDER_PORT);
-    ngx_str_t host_port = ngx_string(HERCULES_SENDER_HOST ":" "HERCULES_SENDER_PORT");
+    ngx_str_t host_port = ngx_string(HERCULES_SENDER_HOST_PORT);
     ctx->addr->name = host_port;
     return NGX_OK;
 }
