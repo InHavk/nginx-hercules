@@ -388,7 +388,7 @@ static void ngx_http_hercules_write_handler(ngx_event_t *wev){
     }
 
     ngx_buf_t* buffer = ctx->active_chunk->buffer;
-    size_t buffer_size = buffer->pos - buffer->end;
+    size_t buffer_size = buffer->end - buffer->pos;
 
     ssize_t sended_size = ngx_send(c, buffer->pos, buffer_size);
     if (sended_size == NGX_ERROR){
