@@ -280,13 +280,14 @@ static void ngx_http_hercules_send_chunk(ngx_http_hercules_ctx_t* ctx){
 
     if (ctx->peer.connection->write->handler != ngx_http_hercules_write_handler){
         ctx->peer.connection->write->handler = ngx_http_hercules_write_handler;
-        if (ngx_handle_read_event(ctx->peer.connection->read, 8) != NGX_OK) {
+        if (ngx_handle_read_event(ctx->peer.connection->read, 0) != NGX_OK) {
             goto error;
         }
-        if (ngx_handle_write_event(ctx->peer.connection->write, 1) != NGX_OK) {
+        if (ngx_handle_write_event(ctx->peer.connection->write, 0) != NGX_OK) {
             goto error;
         }
         ngx_add_timer(ctx->peer.connection->write, ctx->timeout);
+        ngx_http_hercules_write_handler(ctx->peer.connection->write);
     }
     return;
 error:
