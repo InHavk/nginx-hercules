@@ -141,7 +141,7 @@ static ngx_int_t ngx_http_hercules_handler(ngx_http_request_t *r){
     size_t message_length = sizeof(uint32_t) + event_binary->size;
     uint32_t be_event_size = htobe32((uint32_t) event_binary->size);
     
-    if((size_t) (mcf->buffer->end - mcf->buffer->pos) < message_length){
+    if((size_t) (mcf->buffer->end - mcf->buffer->pos) < message_length + sizeof(be_event_size)){
         if(mcf->event->timer_set){
             ngx_event_del_timer(mcf->event);
         }
@@ -150,6 +150,7 @@ static ngx_int_t ngx_http_hercules_handler(ngx_http_request_t *r){
 
     u_char* pos = mcf->buffer->pos;
     ngx_memcpy(pos, &be_event_size, sizeof(be_event_size));
+    pos += sizeof(be_event_size);
     ngx_memcpy(pos, event_binary->value, event_binary->size);
     pos += event_binary->size;
     mcf->buffer->pos = pos;
