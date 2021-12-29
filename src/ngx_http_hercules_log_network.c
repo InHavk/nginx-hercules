@@ -360,6 +360,11 @@ static void ngx_http_hercules_read_handler(ngx_event_t *rev){
     if (ngx_memcmp(ctx->active_chunk->buffer->start, ctx->response->start, HERCULES_SENDER_RESPONSE_SIZE) != 0){
         goto error;
     }
+
+    if (rev->timer_set) {
+        ngx_del_timer(rev);
+    }
+
     ngx_pfree(ctx->pool, ctx->active_chunk->buffer);
     ngx_pfree(ctx->pool, ctx->active_chunk);
     ctx->active_chunk = NULL;
