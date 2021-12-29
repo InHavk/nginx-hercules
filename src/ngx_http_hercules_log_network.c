@@ -209,8 +209,8 @@ static inline void ngx_http_hercules_error(ngx_http_hercules_ctx_t* ctx);
 
 
 void ngx_http_hercules_send_metrics(ngx_http_hercules_main_conf_t* conf){
-    ngx_pool_t* pool = conf->pool;
     ngx_http_hercules_ctx_t* ctx = conf->ctx;
+    ngx_pool_t* pool = ctx->pool;
     ngx_queue_t* task_queue = ctx->task_queue;
     
 
@@ -232,6 +232,7 @@ void ngx_http_hercules_send_metrics(ngx_http_hercules_main_conf_t* conf){
         /* chunk */
         ngx_http_hercules_chunk_t* chunk = ngx_palloc(pool, sizeof(ngx_http_hercules_chunk_t));
         if(chunk == NULL){
+            ngx_pfree(pool, buffer->start);
             ngx_pfree(pool, buffer);
             return;
         }
@@ -241,6 +242,7 @@ void ngx_http_hercules_send_metrics(ngx_http_hercules_main_conf_t* conf){
         /* queue */
         ngx_http_hercules_queue_task_t* last_task = ngx_palloc(pool, sizeof(ngx_http_hercules_queue_task_t));
         if(last_task == NULL){
+            ngx_pfree(pool, buffer->start);
             ngx_pfree(pool, buffer);
             ngx_pfree(pool, chunk);
             return;
@@ -369,6 +371,7 @@ static void ngx_http_hercules_read_handler(ngx_event_t *rev){
         ngx_del_timer(rev);
     }
 
+    ngx_pfree(ctx->pool, ctx->active_chunk->buffer->start);
     ngx_pfree(ctx->pool, ctx->active_chunk->buffer);
     ngx_pfree(ctx->pool, ctx->active_chunk);
     ctx->active_chunk = NULL;
@@ -434,6 +437,7 @@ error:
 
 static inline void ngx_http_hercules_error(ngx_http_hercules_ctx_t* ctx){
     if (ctx->active_chunk->retries_counter >= HERCULES_RESEND_COUNTER){
+        ngx_pfree(ctx->pool, ctx->active_chunk->buffer->start);
         ngx_pfree(ctx->pool, ctx->active_chunk->buffer);
         ngx_pfree(ctx->pool, ctx->active_chunk);
         ctx->active_chunk = NULL;
@@ -443,6 +447,7 @@ static inline void ngx_http_hercules_error(ngx_http_hercules_ctx_t* ctx){
 
     ngx_http_hercules_queue_task_t* last_task = ngx_palloc(ctx->pool, sizeof(ngx_http_hercules_queue_task_t));
     if(last_task == NULL){
+        ngx_pfree(ctx->pool, ctx->active_chunk->buffer->start);
         ngx_pfree(ctx->pool, ctx->active_chunk->buffer);
         ngx_pfree(ctx->pool, ctx->active_chunk);
     } else {
