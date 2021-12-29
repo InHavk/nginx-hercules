@@ -291,6 +291,10 @@ static void ngx_http_hercules_send_chunk(ngx_http_hercules_ctx_t* ctx){
     }
     return;
 error:
+    if (ctx->peer.connection != NULL){
+        ngx_close_connection(ctx->peer.connection);
+        ctx->peer.connection = NULL;
+    }
     ngx_http_hercules_error(ctx);
 }
 
