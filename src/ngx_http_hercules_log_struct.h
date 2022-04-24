@@ -26,7 +26,7 @@ typedef struct ngx_http_hercules_ctx_s {
     ngx_http_hercules_chunk_t*     active_chunk;
     ngx_addr_t*                    addr;
     ngx_buf_t*                     response;
-    ngx_peer_connection_t          peer;
+    ngx_connection_t*              peer;
     ngx_int_t                      active_chunk_status;
     ngx_msec_t                     timeout;
 } ngx_http_hercules_ctx_t;
@@ -43,24 +43,4 @@ typedef struct {
     ngx_msec_t               flush;
     ngx_int_t                node_var_inx;
 } ngx_http_hercules_main_conf_t;
-
-typedef struct {
-    ngx_thread_task_t*             task;
-    ngx_http_hercules_main_conf_t* conf;
-    ngx_buf_t*                     buffer;
-    uint8_t                        counter;
-    uint8_t                        status;
-    int                            socket;
-} ngx_http_hercules_thread_sender_ctx_t;
-
-typedef struct {
-    ngx_buf_t*         buffer;
-    uint8_t            counter;
-    ngx_queue_t        queue;
-} ngx_http_hercules_thread_queue_task_t;
-
-typedef struct {
-    int                socket;
-    ngx_queue_t        queue;
-} ngx_http_hercules_thread_queue_socket_t;
 #endif

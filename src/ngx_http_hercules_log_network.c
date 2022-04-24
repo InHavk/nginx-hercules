@@ -72,66 +72,127 @@ static void ngx_http_hercules_send_chunk(ngx_http_hercules_ctx_t* ctx){
     ngx_queue_remove(q);
     ngx_pfree(pool, q_task);
 
-    if (ctx->peer.connection == NULL){
+    rc = NGX_OK;
+
+    if (ctx->peer == NULL){
         rc = ngx_http_hercules_connect(ctx);
-        if(rc == NGX_BUSY || rc == NGX_DECLINED){
+        if(rc == NGX_ERROR){
             goto error;
         }
+        ctx->peer->data = ctx;
+        ctx->peer->read->handler = ngx_http_hercules_read_handler;
+        ctx->peer->write->handler = ngx_http_hercules_write_handler;
+    
+        ngx_add_timer(ctx->peer->write, ctx->timeout);
     }
 
-    if (ctx->peer.connection->write->handler != ngx_http_hercules_write_handler){
-        ctx->peer.connection->write->handler = ngx_http_hercules_write_handler;
-        if (ngx_handle_read_event(ctx->peer.connection->read, 0) != NGX_OK) {
-            goto error;
-        }
-        if (ngx_handle_write_event(ctx->peer.connection->write, 0) != NGX_OK) {
-            goto error;
-        }
-        ngx_add_timer(ctx->peer.connection->write, ctx->timeout);
-        ngx_http_hercules_write_handler(ctx->peer.connection->write);
+    if(rc == NGX_OK){
+        ngx_http_hercules_write_handler(ctx->peer->write);
     }
+
     return;
 error:
-    if (ctx->peer.connection != NULL){
-        ngx_close_connection(ctx->peer.connection);
-        ctx->peer.connection = NULL;
+    if (ctx->peer != NULL){
+        ngx_close_connection(ctx->peer);
+        ctx->peer = NULL;
     }
     ngx_http_hercules_error(ctx);
 }
 
 static inline ngx_int_t ngx_http_hercules_connect(ngx_http_hercules_ctx_t* ctx){
+    ngx_socket_t      s;
+    ngx_connection_t  *c;
+    ngx_event_t       *rev, *wev;
+    ngx_int_t         rc;
+    ngx_err_t         err;
+    ngx_int_t         event;
     ngx_addr_t* addr = ctx->addr;
 
-    ctx->peer.sockaddr = addr->sockaddr;
-    ctx->peer.socklen = addr->socklen;
-    ctx->peer.name = &addr->name;
-    ctx->peer.get = ngx_event_get_peer;
-    ctx->peer.log = ctx->log;
-    ctx->peer.log_error = NGX_ERROR_ERR;
+    s = ngx_socket(addr->sockaddr->sa_family, SOCK_STREAM, 0);
 
-    ngx_int_t rc = ngx_event_connect_peer(&ctx->peer);
-
-    if(rc == NGX_ERROR || rc == NGX_BUSY || rc == NGX_DECLINED){
-        return rc;
+    if (s == (ngx_socket_t) NGX_ERROR) {
+        return (ngx_int_t) s;
     }
 
-    ctx->peer.connection->data = ctx;
-    ctx->peer.connection->pool = ctx->pool;
-    ctx->peer.connection->read->handler = ngx_http_hercules_read_handler;
-    ctx->peer.connection->write->handler = ngx_http_hercules_write_handler;
+    c = ngx_get_connection(s, ctx->log);
 
-    ngx_add_timer(ctx->peer.connection->write, ctx->timeout);
-
-    if(rc == NGX_OK){
-        ngx_http_hercules_write_handler(ctx->peer.connection->write);
+    if (c == NULL){
+        if (ngx_close_socket(s) == NGX_ERROR){
+            //err
+        }
+        return NGX_ERROR;
     }
 
-    return rc;
+    if (ngx_nonblocking(s) == NGX_ERROR){
+        ngx_close_connection(c);
+        return NGX_ERROR;
+    }
+
+    rev = c->read;
+    wev = c->write;
+
+    rev->log = ctx->log;
+    wev->log = ctx->log;
+
+    c->number = ngx_atomic_fetch_add(ngx_connection_counter, 1);
+    c->start_time = ngx_current_msec;
+
+    if (ngx_add_conn) {
+        if (ngx_add_conn(c) == NGX_ERROR){
+            ngx_close_connection(c);
+            return NGX_ERROR;
+        }
+    }
+
+    rc = connect(s, addr->sockaddr, addr->socklen);
+    if(rc == NGX_ERROR){
+        err = ngx_socket_errno;
+        if (err != NGX_EINPROGRESS){
+            ngx_close_connection(c);
+            return NGX_ERROR;
+        }
+    }
+
+    ctx->peer = c;
+
+    if (ngx_add_conn){
+        if (rc == NGX_ERROR){
+            return NGX_AGAIN;
+        }
+        wev->ready = 1;
+        return NGX_OK;
+    }
+
+    if (ngx_event_flags & NGX_USE_CLEAR_EVENT) {
+        event = NGX_CLEAR_EVENT;
+    } else {
+        event = NGX_LEVEL_EVENT;
+    }
+
+    if (ngx_add_event(rev, NGX_READ_EVENT, event) != NGX_OK){
+        ngx_close_connection(c);
+        ctx->peer = NULL;
+        return NGX_ERROR;
+    }
+
+    if (rc == NGX_ERROR) {
+        if (ngx_add_event(wev, NGX_WRITE_EVENT, event) != NGX_OK){
+            ngx_close_connection(c);
+            ctx->peer = NULL;
+            return NGX_ERROR;
+        }
+
+        return NGX_AGAIN;
+    }
+
+    wev->ready = 1;
+
+    return NGX_OK;
 }
 
-static void ngx_http_hercules_dumb_handler(ngx_event_t *ev){
+/*static void ngx_http_hercules_dumb_handler(ngx_event_t *ev){
     return;
-}
+}*/
 
 static void ngx_http_hercules_read_handler(ngx_event_t *rev){
     ngx_connection_t *c = rev->data;
@@ -176,12 +237,16 @@ static void ngx_http_hercules_read_handler(ngx_event_t *rev){
     ctx->active_chunk = NULL;
     ctx->active_chunk_status = NGX_HERCULES_CHUNK_NULL;
 
-    ngx_http_hercules_send_chunk(ctx);
+    if (ngx_handle_read_event(rev, 0) != NGX_OK) {
+        goto error;
+    }
+
+    /*ngx_http_hercules_send_chunk(ctx);*/
     return;
 
 error:
     ngx_close_connection(c);
-    ctx->peer.connection = NULL;
+    ctx->peer = NULL;
     ngx_http_hercules_error(ctx);
 }
 
@@ -216,8 +281,7 @@ static void ngx_http_hercules_write_handler(ngx_event_t *wev){
                 ngx_del_timer(wev);
             }
             ctx->active_chunk_status = NGX_HERCULES_CHUNK_ON_READ;
-            wev->handler = ngx_http_hercules_dumb_handler;
-            ngx_add_timer(ctx->peer.connection->read, ctx->timeout);
+            ngx_add_timer(ctx->peer->read, ctx->timeout);
             return;
         }
 
@@ -230,7 +294,7 @@ static void ngx_http_hercules_write_handler(ngx_event_t *wev){
     return;
 error:
     ngx_close_connection(c);
-    ctx->peer.connection = NULL;
+    ctx->peer = NULL;
     ngx_http_hercules_error(ctx);
 }
 
@@ -287,7 +351,7 @@ void ngx_http_hercules_send_on_exit(ngx_http_hercules_main_conf_t* conf){
         goto error;
     }
 
-    if(connect(socket_fd, ctx->peer.sockaddr, ctx->peer.socklen) < 0){
+    if(connect(socket_fd, ctx->addr->sockaddr, ctx->addr->socklen) < 0){
             goto error;
     }
 
