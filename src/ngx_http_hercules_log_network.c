@@ -82,11 +82,13 @@ static void ngx_http_hercules_send_chunk(ngx_http_hercules_ctx_t* ctx){
         ctx->peer->data = ctx;
         ctx->peer->read->handler = ngx_http_hercules_read_handler;
         ctx->peer->write->handler = ngx_http_hercules_write_handler;
-    
         ngx_add_timer(ctx->peer->write, ctx->timeout);
     }
 
     if(rc == NGX_OK){
+        if(!ctx->peer->write->timer_set){
+            ngx_add_timer(ctx->peer->write, ctx->timeout);
+        }
         ngx_http_hercules_write_handler(ctx->peer->write);
     }
 
@@ -238,7 +240,9 @@ static void ngx_http_hercules_read_handler(ngx_event_t *rev){
     ctx->active_chunk_status = NGX_HERCULES_CHUNK_NULL;
 
     if (ngx_handle_read_event(rev, 0) != NGX_OK) {
-        goto error;
+        ngx_close_connection(c);
+        ctx->peer = NULL;
+        return;
     }
 
     ngx_http_hercules_send_chunk(ctx);
@@ -369,6 +373,8 @@ void ngx_http_hercules_send_on_exit(ngx_http_hercules_main_conf_t* conf){
             goto error;
         }
     }
+
+    close(socket_fd);
 
 error:
     if(socket_fd > 0){
