@@ -17,8 +17,8 @@
 
 #define HERCULES_RESEND_COUNTER 3
 #define HERCULES_SENDER_RESPONSE_SIZE 8
-#define HERCULES_SEND_TIMEOUT_IN_SECONDS 5
-#define HERCULES_SEND_TIMEOUT HERCULES_SEND_TIMEOUT_IN_SECONDS * 1000
+#define HERCULES_READ_TIMEOUT 5000
+#define HERCULES_WRITE_TIMEOUT 30000
 
 static inline ngx_int_t ngx_http_hercules_initialize_ctx(ngx_http_hercules_main_conf_t* conf){
     ngx_http_hercules_ctx_t* ctx = ngx_palloc(conf->pool, sizeof(ngx_http_hercules_ctx_t));
@@ -33,7 +33,8 @@ static inline ngx_int_t ngx_http_hercules_initialize_ctx(ngx_http_hercules_main_
     }
     ngx_queue_init(ctx->task_queue);
 
-    ctx->timeout = HERCULES_SEND_TIMEOUT;
+    ctx->read_timeout = HERCULES_READ_TIMEOUT;
+    ctx->write_timeout = HERCULES_WRITE_TIMEOUT;
 
     ctx->response = ngx_create_temp_buf(ctx->pool, HERCULES_SENDER_RESPONSE_SIZE);
     if (ctx->response == NULL){

@@ -28,7 +28,8 @@ typedef struct ngx_http_hercules_ctx_s {
     ngx_buf_t*                     response;
     ngx_connection_t*              peer;
     ngx_int_t                      active_chunk_status;
-    ngx_msec_t                     timeout;
+    ngx_msec_t                     read_timeout;
+    ngx_msec_t                     write_timeout;
 } ngx_http_hercules_ctx_t;
 
 typedef struct {
