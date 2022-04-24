@@ -5,10 +5,11 @@
 #include <ngx_http.h>
 #include <ngx_thread_pool.h>
 #include <pthread.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 #include "ngx_http_hercules_log_struct.h"
-
-/* #define THREAD_SENDER */
-#define EVENT_LOOP_SENDER
+#include "ngx_http_hercules_log_module.h"
 
 #define HERCULES_SENDER_HOST "127.0.0.1"
 #define HERCULES_SENDER_PORT 2480
@@ -22,23 +23,6 @@
 #define HERCULES_SENDER_RESPONSE_SIZE 8
 #define HERCULES_SEND_TIMEOUT_IN_SECONDS 5
 #define HERCULES_SEND_TIMEOUT HERCULES_SEND_TIMEOUT_IN_SECONDS * 1000
-
-#include "ngx_http_hercules_log_module.h"
-
-#ifdef THREAD_SENDER
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-
-void ngx_http_hercules_thread_sender(void* data, ngx_log_t* log);
-void ngx_http_hercules_thread_sender_completion(ngx_event_t* ev);
-void ngx_http_hercules_send_metrics(ngx_http_hercules_main_conf_t* conf, u_int8_t direct);
-#endif
-
-#ifdef EVENT_LOOP_SENDER
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
 
 static inline ngx_int_t ngx_http_hercules_initialize_ctx(ngx_http_hercules_main_conf_t* conf){
     ngx_http_hercules_ctx_t* ctx = ngx_palloc(conf->pool, sizeof(ngx_http_hercules_ctx_t));
@@ -76,6 +60,5 @@ static inline ngx_int_t ngx_http_hercules_initialize_ctx(ngx_http_hercules_main_
 
 void ngx_http_hercules_send_metrics(ngx_http_hercules_main_conf_t* conf);
 void ngx_http_hercules_send_on_exit(ngx_http_hercules_main_conf_t* conf);
-#endif
 
 #endif

@@ -184,24 +184,10 @@ static void* ngx_http_hercules_create_conf(ngx_conf_t* cf){
     mcf->pool = cf->pool;
 
     mcf->buffer = ngx_create_temp_buf(cf->pool, HERCULES_LOG_BUFFER_SIZE);
-#ifdef THREAD_SENDER
-    mcf->task_queue = ngx_palloc(cf->pool, sizeof(ngx_queue_t));
-    mcf->sockets = ngx_palloc(cf->pool, sizeof(ngx_queue_t));
-    ngx_str_t hercules_thread_pool_name = ngx_string(HERCULES_THREAD_POOL_NAME);
-    ngx_queue_init(mcf->task_queue);
-    ngx_queue_init(mcf->sockets);
-    for(uint8_t i = 0; i < HERCULES_LOG_MAX_SOCKET_SIZE; ++i){
-        ngx_http_hercules_thread_queue_socket_t* s = ngx_palloc(mcf->pool, sizeof(ngx_http_hercules_thread_queue_socket_t));
-        s->socket = -1;
-        ngx_queue_insert_tail(mcf->sockets, &s->queue);
-    }
-    mcf->thread_pool = ngx_thread_pool_add(cf, &hercules_thread_pool_name);
-#endif
-#ifdef EVENT_LOOP_SENDER
+
     if(ngx_http_hercules_initialize_ctx(mcf) != NGX_OK){
         return NULL;
     }
-#endif
     return mcf;
 }
 
@@ -217,9 +203,6 @@ static ngx_int_t ngx_http_hercules_postconf(ngx_conf_t *cf){
     mcf->node_var_inx = ngx_http_get_variable_index(cf, &s_node_name);
 
     mcf->log = cf->log;
-
-#ifdef THREAD_SENDER
-#endif
 
     h = ngx_array_push(&cmcf->phases[NGX_HTTP_LOG_PHASE].handlers);
     if (h == NULL) {
@@ -238,21 +221,12 @@ static void ngx_http_hercules_exit_process(ngx_cycle_t *cycle){
     if(mcf == NULL){
         return;
     }
-    #ifdef THREAD_SENDER
-    ngx_http_hercules_send_metrics(mcf, 1);
-    #endif
-    #ifdef EVENT_LOOP_SENDER
+
     ngx_http_hercules_send_on_exit(mcf);
-    #endif
 }
 
 static void ngx_http_hercules_flush_buffer(ngx_http_hercules_main_conf_t* conf, ngx_log_t* log){
-    #ifdef THREAD_SENDER
-    ngx_http_hercules_send_metrics(conf, 0);
-    #endif
-    #ifdef EVENT_LOOP_SENDER
     ngx_http_hercules_send_metrics(conf);
-    #endif
 }
 
 static void ngx_http_hercules_flush_handler(ngx_event_t* ev){
