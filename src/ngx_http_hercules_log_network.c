@@ -241,7 +241,7 @@ static void ngx_http_hercules_read_handler(ngx_event_t *rev){
         goto error;
     }
 
-    /*ngx_http_hercules_send_chunk(ctx);*/
+    ngx_http_hercules_send_chunk(ctx);
     return;
 
 error:
