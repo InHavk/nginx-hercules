@@ -19,6 +19,8 @@
 #define HERCULES_SENDER_RESPONSE_SIZE 8
 #define HERCULES_READ_TIMEOUT 5000
 #define HERCULES_WRITE_TIMEOUT 30000
+#define HERCULES_TIMEOUT 60000
+#define HERCULES_TIMEOUT_RETRIES 1000
 
 static inline ngx_int_t ngx_http_hercules_initialize_ctx(ngx_http_hercules_main_conf_t* conf){
     ngx_http_hercules_ctx_t* ctx = ngx_palloc(conf->pool, sizeof(ngx_http_hercules_ctx_t));

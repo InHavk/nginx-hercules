@@ -10,11 +10,15 @@
 #define NGX_HERCULES_CHUNK_ON_READ 2
 
 typedef struct {
-    ngx_buf_t*         buffer;
-    uint8_t            retries_counter;
+    ngx_buf_t*                               buffer;
+    ngx_event_t*                             event;
+    struct ngx_http_hercules_queue_task_str* queue_task; /* crosslink fix */
+    ngx_pool_t*                              pool;
+    uint8_t                                  retries_counter;
+    ngx_int_t                                status;
 } ngx_http_hercules_chunk_t;
 
-typedef struct {
+typedef struct ngx_http_hercules_queue_task_str {
     ngx_http_hercules_chunk_t*     chunk;
     ngx_queue_t                    queue;
 } ngx_http_hercules_queue_task_t;
@@ -27,7 +31,6 @@ typedef struct ngx_http_hercules_ctx_s {
     ngx_addr_t*                    addr;
     ngx_buf_t*                     response;
     ngx_connection_t*              peer;
-    ngx_int_t                      active_chunk_status;
     ngx_msec_t                     read_timeout;
     ngx_msec_t                     write_timeout;
 } ngx_http_hercules_ctx_t;
