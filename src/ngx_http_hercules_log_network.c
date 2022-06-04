@@ -51,7 +51,7 @@ void ngx_http_hercules_send_metrics(ngx_http_hercules_main_conf_t* conf){
         chunk->event->cancelable = 1;
         chunk->event->handler = ngx_http_hercules_chunk_timeout;
         chunk->event->data = chunk;
-        chunk->event->log = ctx->log;
+        chunk->event->log = ngx_cycle->log;
 
         /* queue */
         ngx_http_hercules_queue_task_t* last_task = ngx_palloc(pool, sizeof(ngx_http_hercules_queue_task_t));
@@ -170,7 +170,7 @@ static inline ngx_int_t ngx_http_hercules_connect(ngx_http_hercules_ctx_t* ctx){
         return NGX_ERROR;
     }
 
-    c = ngx_get_connection(s, ctx->log);
+    c = ngx_get_connection(s, ngx_cycle->log);
 
     if (c == NULL){
         if (ngx_close_socket(s) == NGX_ERROR){
@@ -178,6 +178,8 @@ static inline ngx_int_t ngx_http_hercules_connect(ngx_http_hercules_ctx_t* ctx){
         }
         return NGX_ERROR;
     }
+
+    ngx_set_connection_log(c, ngx_cycle->log);
 
     if (ngx_nonblocking(s) == NGX_ERROR){
         ngx_close_connection(c);
@@ -187,8 +189,8 @@ static inline ngx_int_t ngx_http_hercules_connect(ngx_http_hercules_ctx_t* ctx){
     rev = c->read;
     wev = c->write;
 
-    rev->log = ctx->log;
-    wev->log = ctx->log;
+    rev->log = ngx_cycle->log;
+    wev->log = ngx_cycle->log;
 
     c->number = ngx_atomic_fetch_add(ngx_connection_counter, 1);
     c->start_time = ngx_current_msec;
@@ -269,7 +271,7 @@ static void ngx_http_hercules_read_handler(ngx_event_t *rev){
     }
 
     if (rev->timedout){
-        ngx_log_error(NGX_LOG_ERR, ctx->log, NGX_ETIMEDOUT, "hercules sender timed out");
+        ngx_log_error(NGX_LOG_ERR, c->log, NGX_ETIMEDOUT, "hercules sender timed out");
         goto error;
     }
 
@@ -317,7 +319,7 @@ static void ngx_http_hercules_write_handler(ngx_event_t *wev){
         return;
     }
     if (wev->timedout){
-        ngx_log_error(NGX_LOG_ERR, ctx->log, NGX_ETIMEDOUT, "hercules sender timed out");
+        ngx_log_error(NGX_LOG_ERR, c->log, NGX_ETIMEDOUT, "hercules sender timed out");
         goto error;
     }
 
