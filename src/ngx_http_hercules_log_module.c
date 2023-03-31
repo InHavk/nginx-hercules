@@ -91,6 +91,7 @@ static ngx_int_t ngx_http_hercules_handler(ngx_http_request_t *r){
     }
 
     /* /NginxEvent/method */
+    /* /NginxEvent/method_origin */
     if(ngx_http_hercules_event_method(&pool, event->payload, r, mcf) == NGX_ERROR){
         return NGX_ERROR;
     }
@@ -359,6 +360,10 @@ static inline ngx_int_t ngx_http_hercules_event_method(Event_pool* pool, List* r
             break;
     }
     container_add_tag_Byte(pool, root_container, 6, "method", b_method);
+    if (b_method == 0xFF){
+        STR_FROM_NGX_STR(s_method_name, r->pool, r->method_name);
+        container_add_tag_String(pool, root_container, 11, "method_name", s_method_name);
+    }
     return NGX_OK;
 }
 
