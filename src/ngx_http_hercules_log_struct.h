@@ -46,5 +46,10 @@ typedef struct {
     ngx_http_hercules_ctx_t* ctx;
     ngx_msec_t               flush;
     ngx_int_t                node_var_inx;
+    ngx_flag_t               enable;
 } ngx_http_hercules_main_conf_t;
+
+typedef struct {
+    char request_id[16];
+} ngx_http_hercules_request_ctx_t;
 #endif
