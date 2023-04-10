@@ -668,7 +668,7 @@ static inline void ngx_http_hercules_generate_request_id(char* request_id){
     /* if(getrandom(random_bytes, 16, 0)) { */
     /* centos - kernel 3.10 */
 
-#ifndef USE_RDSEED
+#ifndef __RDSEED__
     /* simple rand */
     if(1){
         request_id[0] = rand() % 256;
@@ -688,7 +688,7 @@ static inline void ngx_http_hercules_generate_request_id(char* request_id){
         request_id[14] = rand() % 256;
         request_id[15] = rand() % 256;
 #endif
-#ifdef USE_RDSEED
+#ifdef __RDSEED__
     if(1){
         while(_rdseed64_step((unsigned long long *) request_id) != 1){}
         while(_rdseed64_step((unsigned long long *) (request_id+8)) != 1){}
