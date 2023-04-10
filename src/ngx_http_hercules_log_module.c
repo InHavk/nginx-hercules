@@ -609,7 +609,7 @@ static inline ngx_int_t ngx_http_hercules_event_connection(Event_pool* pool, Lis
     if (ngx_connection_local_sockaddr(r->connection, &connection_addr, 0) == NGX_OK) {
         string_connection_addr[connection_addr.len] = '\0';
         ngx_memcpy(string_connection_addr, connection_addr.data, connection_addr.len);
-        container_add_tag_String(pool, container_connection, 4, "addr", "");
+        container_add_tag_String(pool, container_connection, 4, "addr", string_connection_addr);
     }
 
     /* /NginxEvent/connection/client_ip */
@@ -631,8 +631,7 @@ static inline ngx_int_t ngx_http_hercules_event_connection(Event_pool* pool, Lis
     }
 
     /* /NginxEvent/connection/scheme */
-    STR_FROM_NGX_STR(s_scheme, r->pool, r->schema);
-    container_add_tag_String(pool, container_connection, 6, "scheme", s_scheme);
+    container_add_tag_String(pool, container_connection, 6, "scheme", (r->connection->ssl) ? "https" : "http");
 
     /* /NginxEvent/connection/connection */
     container_add_tag_Long(pool, container_connection, 10, "connection", (int64_t) r->connection->number);
