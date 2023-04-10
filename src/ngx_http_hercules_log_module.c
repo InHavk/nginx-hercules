@@ -19,12 +19,23 @@ static inline ngx_int_t ngx_http_hercules_event_req_headers(Event_pool* pool, Li
 static inline ngx_int_t ngx_http_hercules_event_res_headers(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf);
 static inline ngx_int_t ngx_http_hercules_event_counters(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf);
 static inline ngx_int_t ngx_http_hercules_event_connection(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf);
-static inline ngx_int_t ngx_http_hercules_event_request_id(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf);
+static inline ngx_int_t ngx_http_hercules_event_request_id(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf, u_char* request_id);
 static inline ngx_int_t ngx_http_hercules_event_node(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf);
 static inline void ngx_http_hercules_generate_request_id(char* request_id);
 
 static ngx_str_t  ngx_http_hercules_id_hex = ngx_string("hercules_id_hex");
-const static char hex[16] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
+
+static ngx_command_t ngx_hercules_commands [] = {
+    {
+        ngx_string("hercules_module"),
+        NGX_HTTP_MAIN_CONF|NGX_CONF_FLAG,
+        ngx_conf_set_flag_slot,
+        NGX_HTTP_MAIN_CONF_OFFSET,
+        offsetof(ngx_http_hercules_main_conf_t, enable),
+        NULL
+    },
+    ngx_null_command
+};
 
 static ngx_http_module_t  ngx_http_hercules_module_ctx = {
     ngx_http_hercules_add_variables,       /* preconfiguration */
@@ -56,18 +67,6 @@ ngx_module_t  ngx_http_hercules_module = {
     NGX_MODULE_V1_PADDING
 };
 
-static ngx_command_t ngx_hercules_commands [] = {
-    {
-        ngx_string("hercules_module"),
-        NGX_HTTP_MAIN_CONF|NGX_CONF_FLAG,
-        ngx_conf_set_flag_slot,
-        NGX_HTTP_MAIN_CONF_OFFSET,
-        offsetof(ngx_http_hercules_main_conf_t, enable),
-        NULL
-    },
-    ngx_null_command
-};
-
 static void* ngx_http_hercules_create_conf(ngx_conf_t* cf){
     ngx_http_hercules_main_conf_t* mcf;
 
@@ -89,6 +88,7 @@ static void* ngx_http_hercules_create_conf(ngx_conf_t* cf){
     mcf->pool = cf->pool;
 
     mcf->buffer = ngx_create_temp_buf(cf->pool, HERCULES_LOG_BUFFER_SIZE);
+    mcf->enable = NGX_CONF_UNSET;
 
     if(ngx_http_hercules_initialize_ctx(mcf) != NGX_OK){
         return NULL;
@@ -153,33 +153,21 @@ static ngx_int_t ngx_http_hercules_add_variables(ngx_conf_t *cf){
 }
 
 static ngx_int_t ngx_http_hercules_id_get_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v, uintptr_t data){
-    char *uuid_hex = ngx_pnalloc(r->pool, 32);
-    if (uuid_hex == NULL) {
-        return NGX_ERROR;
-    }
-
     ngx_http_hercules_request_ctx_t* req_ctx = ngx_http_get_module_ctx(r, ngx_http_hercules_module);
     if(req_ctx == NULL){
         return NGX_ERROR;
     }
 
-    char *request_id = req_ctx->request_id;
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+               "hercules_id_hex: \"%.32s\"",
+               req_ctx->request_id_hex);
 
-    for(uint8_t i = 0; i < 16; i++){
-#if defined(__BYTE_ORDER__)&&(__BYTE_ORDER__ == __ORDER_BIG_ENDIAN__)
-        uuid_hex[(i * 2)] = hex[request_id[i]];
-        uuid_hex[(i * 2) + 1] = hex[request_id[i] >> 4];
-#else
-        uuid_hex[(i * 2)] = hex[request_id[i] >> 4];
-        uuid_hex[(i * 2) + 1] = hex[request_id[i]];
-#endif
-    }
-
-    v->data = uuid_hex;
+    v->data = req_ctx->request_id_hex;
     v->len = 32;
     v->valid = 1;
     v->no_cacheable = 0;
     v->not_found = 0;
+    v->escape = 0;
 
     return NGX_OK;
 }
@@ -191,7 +179,8 @@ static ngx_int_t ngx_http_hercules_post_read_handler(ngx_http_request_t *r){
     }
 
     ngx_http_set_ctx(r, req_ctx, ngx_http_hercules_module);
-    ngx_http_hercules_generate_request_id(req_ctx->request_id);
+    ngx_http_hercules_generate_request_id((char*) req_ctx->request_id);
+    ngx_hex_dump(req_ctx->request_id_hex, req_ctx->request_id, 16);
 
     return NGX_OK;
 }
@@ -280,7 +269,7 @@ static ngx_int_t ngx_http_hercules_handler(ngx_http_request_t *r){
     }
 
     /* /NginxEvent/request_id */
-    if(ngx_http_hercules_event_request_id(&pool, event->payload, r, mcf) == NGX_ERROR){
+    if(ngx_http_hercules_event_request_id(&pool, event->payload, r, mcf, req_ctx->request_id_hex) == NGX_ERROR){
         return NGX_ERROR;
     }
 
@@ -651,49 +640,11 @@ static inline ngx_int_t ngx_http_hercules_event_connection(Event_pool* pool, Lis
     return NGX_OK;
 }
 
-static inline ngx_int_t ngx_http_hercules_event_request_id(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf){
-    u_char random_bytes[16];
-    u_char s_request_id[33];
-    s_request_id[32] = '\0';
-#if !(NGX_LINUX)
-    /* libcrypto call (openssl) */
-    if (RAND_bytes(random_bytes, 16) == 1) {
-#endif
-#if (NGX_LINUX)
-    /* getrandom() system call. /dev/urandom as source */
-    /* required linux kernel >= 3.17 and glibc >= 2.25 */
-    /* if(getrandom(random_bytes, 16, 0)) { */
-    /* centos - kernel 3.10 */
+static inline ngx_int_t ngx_http_hercules_event_request_id(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf, u_char* request_id){
+    u_char *s_request_id = ngx_pcalloc(r->pool, 33);
 
-#ifndef USE_RDSEED
-    /* simple rand */
-    if(1){
-        random_bytes[0] = rand() % 256;
-        random_bytes[1] = rand() % 256;
-        random_bytes[2] = rand() % 256;
-        random_bytes[3] = rand() % 256;
-        random_bytes[4] = rand() % 256;
-        random_bytes[5] = rand() % 256;
-        random_bytes[6] = rand() % 256;
-        random_bytes[7] = rand() % 256;
-        random_bytes[8] = rand() % 256;
-        random_bytes[9] = rand() % 256;
-        random_bytes[10] = rand() % 256;
-        random_bytes[11] = rand() % 256;
-        random_bytes[12] = rand() % 256;
-        random_bytes[13] = rand() % 256;
-        random_bytes[14] = rand() % 256;
-        random_bytes[15] = rand() % 256;
-#endif
-#ifdef USE_RDSEED
-    if(1){
-        while(_rdseed64_step((uint64_t*) random_bytes) != 1){}
-        while(_rdseed64_step((uint64_t*) (random_bytes+8)) != 1){}
-#endif
-#endif
-        ngx_hex_dump(s_request_id, random_bytes, 16);
-        container_add_tag_String(pool, root_container, 10, "request_id", (char*) s_request_id);
-    }
+    ngx_memcpy(s_request_id, request_id, 32);
+    container_add_tag_String(pool, root_container, 10, "request_id", (char*) s_request_id);
 
     return NGX_OK;
 }
@@ -740,8 +691,9 @@ static inline void ngx_http_hercules_generate_request_id(char* request_id){
 #endif
 #ifdef USE_RDSEED
     if(1){
-        while(_rdseed64_step((uint64_t*) request_id) != 1){}
-        while(_rdseed64_step((uint64_t*) (request_id+8)) != 1){}
+        while(_rdseed64_step((unsigned long long *) request_id) != 1){}
+        while(_rdseed64_step((unsigned long long *) (request_id+8)) != 1){}
 #endif
 #endif
+    }
 }
