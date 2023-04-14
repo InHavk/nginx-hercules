@@ -13,9 +13,8 @@
 #define HERCULES_LOG_BUFFER_SIZE 1024 * 1024 * 32
 #define HERCULES_LOG_BUFFER_FLUSH_TIME 5000
 #define HERCULES_LOG_MAX_SOCKET_SIZE 1
-/* #define USE_RDSEED */
 
-#ifdef USE_RDSEED
+#ifdef __RDSEED__
 #include <immintrin.h>
 #endif
 

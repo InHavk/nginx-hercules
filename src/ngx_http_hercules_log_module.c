@@ -1,9 +1,12 @@
 #include "ngx_http_hercules_log_module.h"
 
 static ngx_int_t ngx_http_hercules_handler(ngx_http_request_t* r);
+static ngx_int_t ngx_http_hercules_post_read_handler(ngx_http_request_t *r);
 static ngx_int_t ngx_http_hercules_postconf(ngx_conf_t* cf);
 static void ngx_http_hercules_exit_process(ngx_cycle_t* cycle);
 static void* ngx_http_hercules_create_conf(ngx_conf_t* cf);
+static ngx_int_t ngx_http_hercules_add_variables(ngx_conf_t *cf);
+static ngx_int_t ngx_http_hercules_id_get_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v, uintptr_t data);
 static void ngx_http_hercules_flush_handler(ngx_event_t* ev);
 static void ngx_http_hercules_flush_buffer(ngx_http_hercules_main_conf_t* conf, ngx_log_t* log);
 static inline ngx_int_t ngx_http_hercules_event_host(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf);
@@ -16,11 +19,26 @@ static inline ngx_int_t ngx_http_hercules_event_req_headers(Event_pool* pool, Li
 static inline ngx_int_t ngx_http_hercules_event_res_headers(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf);
 static inline ngx_int_t ngx_http_hercules_event_counters(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf);
 static inline ngx_int_t ngx_http_hercules_event_connection(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf);
-static inline ngx_int_t ngx_http_hercules_event_request_id(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf);
+static inline ngx_int_t ngx_http_hercules_event_request_id(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf, u_char* request_id);
 static inline ngx_int_t ngx_http_hercules_event_node(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf);
+static inline void ngx_http_hercules_generate_request_id(char* request_id);
+
+static ngx_str_t  ngx_http_hercules_id_hex = ngx_string("hercules_id_hex");
+
+static ngx_command_t ngx_hercules_commands [] = {
+    {
+        ngx_string("hercules_module"),
+        NGX_HTTP_MAIN_CONF|NGX_CONF_FLAG,
+        ngx_conf_set_flag_slot,
+        NGX_HTTP_MAIN_CONF_OFFSET,
+        offsetof(ngx_http_hercules_main_conf_t, enable),
+        NULL
+    },
+    ngx_null_command
+};
 
 static ngx_http_module_t  ngx_http_hercules_module_ctx = {
-    NULL,                                  /* preconfiguration */
+    ngx_http_hercules_add_variables,       /* preconfiguration */
     ngx_http_hercules_postconf,            /* postconfiguration */
 
     ngx_http_hercules_create_conf,         /* create main configuration */
@@ -37,7 +55,7 @@ static ngx_http_module_t  ngx_http_hercules_module_ctx = {
 ngx_module_t  ngx_http_hercules_module = {
     NGX_MODULE_V1,
     &ngx_http_hercules_module_ctx,         /* module context */
-    NULL,                                  /* module directives */
+    ngx_hercules_commands,                 /* module directives */
     NGX_HTTP_MODULE,                       /* module type */
     NULL,                                  /* init master */
     NULL,                                  /* init module */
@@ -49,17 +67,144 @@ ngx_module_t  ngx_http_hercules_module = {
     NGX_MODULE_V1_PADDING
 };
 
+static void* ngx_http_hercules_create_conf(ngx_conf_t* cf){
+    ngx_http_hercules_main_conf_t* mcf;
+
+    mcf = ngx_pcalloc(cf->pool, sizeof(ngx_http_hercules_main_conf_t));
+    if(mcf == NULL){
+        return NULL;
+    }
+
+    mcf->flush = HERCULES_LOG_BUFFER_FLUSH_TIME;
+    mcf->event = ngx_pcalloc(cf->pool, sizeof(ngx_event_t));
+    if(mcf->event == NULL){
+        return NULL;
+    }
+    mcf->event->cancelable = 1;
+    mcf->event->handler = ngx_http_hercules_flush_handler;
+    mcf->event->data = mcf;
+    mcf->event->log = &cf->cycle->new_log;
+
+    mcf->pool = cf->pool;
+
+    mcf->buffer = ngx_create_temp_buf(cf->pool, HERCULES_LOG_BUFFER_SIZE);
+    mcf->enable = NGX_CONF_UNSET;
+
+    if(ngx_http_hercules_initialize_ctx(mcf) != NGX_OK){
+        return NULL;
+    }
+    return mcf;
+}
+
+static ngx_int_t ngx_http_hercules_postconf(ngx_conf_t *cf){
+    ngx_http_core_main_conf_t*     cmcf;
+    ngx_http_hercules_main_conf_t* mcf;
+    ngx_http_handler_pt*           h;
+    ngx_http_handler_pt*           ph;
+
+    cmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_core_module);
+    mcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_hercules_module);
+
+    ngx_str_t s_node_name = ngx_string("node_name");
+    mcf->node_var_inx = ngx_http_get_variable_index(cf, &s_node_name);
+
+    mcf->log = cf->log;
+
+    h = ngx_array_push(&cmcf->phases[NGX_HTTP_LOG_PHASE].handlers);
+    if (h == NULL) {
+        return NGX_ERROR;
+    }
+    *h = ngx_http_hercules_handler;
+
+    ph = ngx_array_push(&cmcf->phases[NGX_HTTP_POST_READ_PHASE].handlers);
+    if (ph == NULL) {
+        return NGX_ERROR;
+    }
+    *ph = ngx_http_hercules_post_read_handler;
+
+    return NGX_OK;
+}
+
+static void ngx_http_hercules_exit_process(ngx_cycle_t *cycle){
+    if (ngx_process != NGX_PROCESS_WORKER && ngx_process != NGX_PROCESS_SINGLE){
+        return;
+    }
+    ngx_http_hercules_main_conf_t* mcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_hercules_module);
+    if(mcf == NULL){
+        return;
+    }
+
+    if(!mcf->enable){
+        return;
+    }
+
+    ngx_http_hercules_send_on_exit(mcf);
+}
+
+static ngx_int_t ngx_http_hercules_add_variables(ngx_conf_t *cf){
+    ngx_http_variable_t  *var = ngx_http_add_variable(cf, &ngx_http_hercules_id_hex, 0);
+    if(var == NULL) {
+        return NGX_ERROR;
+    }
+
+    var->get_handler = ngx_http_hercules_id_get_variable;
+
+    return NGX_OK;
+}
+
+static ngx_int_t ngx_http_hercules_id_get_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v, uintptr_t data){
+    ngx_http_hercules_request_ctx_t* req_ctx = ngx_http_get_module_ctx(r, ngx_http_hercules_module);
+    if(req_ctx == NULL){
+        return NGX_ERROR;
+    }
+
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+               "hercules_id_hex: \"%.32s\"",
+               req_ctx->request_id_hex);
+
+    v->data = req_ctx->request_id_hex;
+    v->len = 32;
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
+    v->escape = 0;
+
+    return NGX_OK;
+}
+
+static ngx_int_t ngx_http_hercules_post_read_handler(ngx_http_request_t *r){
+    ngx_http_hercules_request_ctx_t* req_ctx = ngx_palloc(r->pool, sizeof(ngx_http_hercules_request_ctx_t));
+    if(req_ctx == NULL){
+        return NGX_ERROR;
+    }
+
+    ngx_http_set_ctx(r, req_ctx, ngx_http_hercules_module);
+    ngx_http_hercules_generate_request_id((char*) req_ctx->request_id);
+    ngx_hex_dump(req_ctx->request_id_hex, req_ctx->request_id, 16);
+
+    return NGX_OK;
+}
+
 static ngx_int_t ngx_http_hercules_handler(ngx_http_request_t *r){
 
     ngx_http_hercules_main_conf_t* mcf = ngx_http_get_module_main_conf(r, ngx_http_hercules_module);
+
+    if(!mcf->enable){
+        return NGX_OK;
+    }
 
     if(r->connection->local_sockaddr->sa_family == AF_UNIX){
         /* ignore unix servers */
         return NGX_OK;
     }
+
+    ngx_http_hercules_request_ctx_t* req_ctx = ngx_http_get_module_ctx(r, ngx_http_hercules_module);
+    if(req_ctx == NULL){
+        return NGX_ERROR;
+    }
     
     uint8_t uuid[16];
-    generate_uuid_v4(uuid);
+    prepare_uuid_v4(uuid, (uint8_t*) req_ctx->request_id);
     uint64_t timestamp = generate_current_timestamp();
     Event_pool pool;
     pool_init(&pool, r->pool);
@@ -124,7 +269,7 @@ static ngx_int_t ngx_http_hercules_handler(ngx_http_request_t *r){
     }
 
     /* /NginxEvent/request_id */
-    if(ngx_http_hercules_event_request_id(&pool, event->payload, r, mcf) == NGX_ERROR){
+    if(ngx_http_hercules_event_request_id(&pool, event->payload, r, mcf, req_ctx->request_id_hex) == NGX_ERROR){
         return NGX_ERROR;
     }
 
@@ -162,68 +307,6 @@ static ngx_int_t ngx_http_hercules_handler(ngx_http_request_t *r){
     }
 
     return NGX_OK;
-}
-
-static void* ngx_http_hercules_create_conf(ngx_conf_t* cf){
-    ngx_http_hercules_main_conf_t* mcf;
-    
-    mcf = ngx_palloc(cf->pool, sizeof(ngx_http_hercules_main_conf_t));
-    if(mcf == NULL){
-        return NULL;
-    }
-
-    mcf->flush = HERCULES_LOG_BUFFER_FLUSH_TIME;
-    mcf->event = ngx_pcalloc(cf->pool, sizeof(ngx_event_t));
-    if(mcf->event == NULL){
-        return NULL;
-    }
-    mcf->event->cancelable = 1;
-    mcf->event->handler = ngx_http_hercules_flush_handler;
-    mcf->event->data = mcf;
-    mcf->event->log = &cf->cycle->new_log;
-
-    mcf->pool = cf->pool;
-
-    mcf->buffer = ngx_create_temp_buf(cf->pool, HERCULES_LOG_BUFFER_SIZE);
-
-    if(ngx_http_hercules_initialize_ctx(mcf) != NGX_OK){
-        return NULL;
-    }
-    return mcf;
-}
-
-static ngx_int_t ngx_http_hercules_postconf(ngx_conf_t *cf){
-    ngx_http_core_main_conf_t*     cmcf;
-    ngx_http_hercules_main_conf_t* mcf;
-    ngx_http_handler_pt*           h;
-
-    cmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_core_module);
-    mcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_hercules_module);
-
-    ngx_str_t s_node_name = ngx_string("node_name");
-    mcf->node_var_inx = ngx_http_get_variable_index(cf, &s_node_name);
-
-    mcf->log = cf->log;
-
-    h = ngx_array_push(&cmcf->phases[NGX_HTTP_LOG_PHASE].handlers);
-    if (h == NULL) {
-        return NGX_ERROR;
-    }
-    *h = ngx_http_hercules_handler;
-
-    return NGX_OK;
-}
-
-static void ngx_http_hercules_exit_process(ngx_cycle_t *cycle){
-    if (ngx_process != NGX_PROCESS_WORKER && ngx_process != NGX_PROCESS_SINGLE){
-        return;
-    }
-    ngx_http_hercules_main_conf_t* mcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_hercules_module);
-    if(mcf == NULL){
-        return;
-    }
-
-    ngx_http_hercules_send_on_exit(mcf);
 }
 
 static void ngx_http_hercules_flush_buffer(ngx_http_hercules_main_conf_t* conf, ngx_log_t* log){
@@ -526,7 +609,7 @@ static inline ngx_int_t ngx_http_hercules_event_connection(Event_pool* pool, Lis
     if (ngx_connection_local_sockaddr(r->connection, &connection_addr, 0) == NGX_OK) {
         string_connection_addr[connection_addr.len] = '\0';
         ngx_memcpy(string_connection_addr, connection_addr.data, connection_addr.len);
-        container_add_tag_String(pool, container_connection, 4, "addr", "");
+        container_add_tag_String(pool, container_connection, 4, "addr", string_connection_addr);
     }
 
     /* /NginxEvent/connection/client_ip */
@@ -548,8 +631,7 @@ static inline ngx_int_t ngx_http_hercules_event_connection(Event_pool* pool, Lis
     }
 
     /* /NginxEvent/connection/scheme */
-    STR_FROM_NGX_STR(s_scheme, r->pool, r->schema);
-    container_add_tag_String(pool, container_connection, 6, "scheme", s_scheme);
+    container_add_tag_String(pool, container_connection, 6, "scheme", (r->connection->ssl) ? "https" : "http");
 
     /* /NginxEvent/connection/connection */
     container_add_tag_Long(pool, container_connection, 10, "connection", (int64_t) r->connection->number);
@@ -557,49 +639,11 @@ static inline ngx_int_t ngx_http_hercules_event_connection(Event_pool* pool, Lis
     return NGX_OK;
 }
 
-static inline ngx_int_t ngx_http_hercules_event_request_id(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf){
-    u_char random_bytes[16];
-    u_char s_request_id[33];
-    s_request_id[32] = '\0';
-#if !(NGX_LINUX)
-    /* libcrypto call (openssl) */
-    if (RAND_bytes(random_bytes, 16) == 1) {
-#endif
-#if (NGX_LINUX)
-    /* getrandom() system call. /dev/urandom as source */
-    /* required linux kernel >= 3.17 and glibc >= 2.25 */
-    /* if(getrandom(random_bytes, 16, 0)) { */
-    /* centos - kernel 3.10 */
+static inline ngx_int_t ngx_http_hercules_event_request_id(Event_pool* pool, List* root_container, ngx_http_request_t* r, ngx_http_hercules_main_conf_t* mcf, u_char* request_id){
+    u_char *s_request_id = ngx_pcalloc(r->pool, 33);
 
-#ifndef USE_RDSEED
-    /* simple rand */
-    if(1){
-        random_bytes[0] = rand() % 256;
-        random_bytes[1] = rand() % 256;
-        random_bytes[2] = rand() % 256;
-        random_bytes[3] = rand() % 256;
-        random_bytes[4] = rand() % 256;
-        random_bytes[5] = rand() % 256;
-        random_bytes[6] = rand() % 256;
-        random_bytes[7] = rand() % 256;
-        random_bytes[8] = rand() % 256;
-        random_bytes[9] = rand() % 256;
-        random_bytes[10] = rand() % 256;
-        random_bytes[11] = rand() % 256;
-        random_bytes[12] = rand() % 256;
-        random_bytes[13] = rand() % 256;
-        random_bytes[14] = rand() % 256;
-        random_bytes[15] = rand() % 256;
-#endif
-#ifdef USE_RDSEED
-    if(1){
-        while(_rdseed64_step((uint64_t*) random_bytes) != 1){}
-        while(_rdseed64_step((uint64_t*) (random_bytes+8)) != 1){}
-#endif
-#endif
-        ngx_hex_dump(s_request_id, random_bytes, 16);
-        container_add_tag_String(pool, root_container, 10, "request_id", (char*) s_request_id);
-    }
+    ngx_memcpy(s_request_id, request_id, 32);
+    container_add_tag_String(pool, root_container, 10, "request_id", (char*) s_request_id);
 
     return NGX_OK;
 }
@@ -611,4 +655,44 @@ static inline ngx_int_t ngx_http_hercules_event_node(Event_pool* pool, List* roo
     ngx_memcpy(s_node_name, var_node_name->data, var_node_name->len);
     container_add_tag_String(pool, root_container, 4, "node", s_node_name);
     return NGX_OK;
+}
+
+static inline void ngx_http_hercules_generate_request_id(char* request_id){
+#if !(NGX_LINUX)
+    /* libcrypto call (openssl) */
+    if (RAND_bytes(request_id, 16) == 1) {
+#endif
+#if (NGX_LINUX)
+    /* getrandom() system call. /dev/urandom as source */
+    /* required linux kernel >= 3.17 and glibc >= 2.25 */
+    /* if(getrandom(random_bytes, 16, 0)) { */
+    /* centos - kernel 3.10 */
+
+#ifndef __RDSEED__
+    /* simple rand */
+    if(1){
+        request_id[0] = rand() % 256;
+        request_id[1] = rand() % 256;
+        request_id[2] = rand() % 256;
+        request_id[3] = rand() % 256;
+        request_id[4] = rand() % 256;
+        request_id[5] = rand() % 256;
+        request_id[6] = rand() % 256;
+        request_id[7] = rand() % 256;
+        request_id[8] = rand() % 256;
+        request_id[9] = rand() % 256;
+        request_id[10] = rand() % 256;
+        request_id[11] = rand() % 256;
+        request_id[12] = rand() % 256;
+        request_id[13] = rand() % 256;
+        request_id[14] = rand() % 256;
+        request_id[15] = rand() % 256;
+#endif
+#ifdef __RDSEED__
+    if(1){
+        while(_rdseed64_step((unsigned long long *) request_id) != 1){}
+        while(_rdseed64_step((unsigned long long *) (request_id+8)) != 1){}
+#endif
+#endif
+    }
 }
