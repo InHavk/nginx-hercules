@@ -205,10 +205,15 @@ static ngx_int_t ngx_http_hercules_handler(ngx_http_request_t *r){
     
     uint8_t uuid[16];
     prepare_uuid_v4(uuid, (uint8_t*) req_ctx->request_id);
-    uint64_t timestamp = generate_current_timestamp();
+
+    struct timespec t;
+    clock_gettime(CLOCK_REALTIME, &t);
+
+    uint64_t timestamp_for_event = (t.tv_sec * 10000000) + (t.tv_nsec / 100);
+    uint64_t timestamp = (t.tv_sec * 1000000) + (t.tv_nsec / 1000);
     Event_pool pool;
     pool_init(&pool, r->pool);
-    Event* event = event_create(&pool, 0x01, timestamp, uuid);
+    Event* event = event_create(&pool, 0x01, timestamp_for_event, uuid);
 
     /* container /NginxEvent is empty */
 

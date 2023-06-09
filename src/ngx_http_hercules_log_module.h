@@ -5,6 +5,7 @@
 #include <ngx_http.h>
 #include <ngx_event_openssl.h>
 #include <endian.h>
+#include <time.h>
 #include <libhercules.h>
 
 #include "ngx_http_hercules_log_struct.h"
